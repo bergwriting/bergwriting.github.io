@@ -1,0 +1,34 @@
+{
+  "name": "essay-anonymizer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Offline, rule-based anonymizer for student essays (.docx / .pdf). Runs entirely in the browser.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build && node scripts/rename-dist.mjs",
+    "test": "vitest run",
+    "fixtures": "node tests/fixtures/make-fixtures.mjs",
+    "e2e": "playwright test"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@xmldom/xmldom": "^0.9.8",
+    "compromise": "^14.17.0",
+    "docx": "^9.8.0",
+    "jszip": "^3.10.2",
+    "papaparse": "^5.7.0",
+    "pdfjs-dist": "^6.3.289",
+    "preact": "^10.29.8"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@preact/preset-vite": "^2.10.6",
+    "@types/papaparse": "^5.5.2",
+    "pdf-lib": "^1.17.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.1",
+    "vite-plugin-singlefile": "^2.3.3",
+    "vitest": "^5.0.2"
+  }
+}

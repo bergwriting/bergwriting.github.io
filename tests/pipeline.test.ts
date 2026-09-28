@@ -124,3 +124,23 @@ describe('without a roster match', () => {
     for (const bad of STUDENT_NAMES[name]) expect(folded.includes(foldString(bad)), bad).toBe(false);
   });
 });
+
+describe('"Names only" preset', () => {
+  it('removes names but keeps email, course and date', async () => {
+    const name = 'Okafor_Essay_Final.docx';
+    const remove = Object.fromEntries(Object.keys(DEFAULT_SETTINGS.remove).map((k) => [k, ['studentName', 'instructor', 'classmates'].includes(k)])) as Settings['remove'];
+    const s: Settings = { ...settings, remove };
+    const essay = await parseEssay(name, fixtures[name]);
+    const student = roster.find((r) => r.fileName === name);
+    const spans = detectAll(essay, { student, others: roster, settings: s });
+    const out = await exportEssay(essay, spans, 'WP-TEST', student, remove);
+    const text = await allText(out.bytes);
+    // the kept email address itself contains the name, by the committee's choice
+    const outsideEmail = foldString(text).replaceAll('amara.okafor@example.edu', '');
+    for (const bad of ['Okafor', 'Amara', 'Daniel Reyes', 'Priya Shah']) expect(outsideEmail).not.toContain(foldString(bad));
+    for (const kept of ['amara.okafor@example.edu', 'ENG 101-03', '12 October 2025', '555-0142', 'Muhlenberg College']) expect(text).toContain(kept);
+    expect(out.hits.filter((h) => !h.allowed)).toEqual([]);
+    // switched-off kinds are still highlighted for the reviewer
+    expect(spans.some((sp) => sp.category === 'EMAIL' && sp.action === 'flag')).toBe(true);
+  });
+});

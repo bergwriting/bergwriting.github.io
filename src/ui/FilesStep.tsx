@@ -1,7 +1,7 @@
 import type { RosterEntry, Settings } from '../core/types';
 import { matchEssay } from '../core/roster';
 import { parseEssay } from '../pipeline';
-import { uniqueCode } from '../key';
+import { randomRank, uniqueTag } from '../key';
 import { DropZone } from './DropZone';
 import { readBytes, plural } from './util';
 import { CHOSEN_BY_YOU, redetect, type EssayItem } from './state';
@@ -25,7 +25,7 @@ export function FilesStep({ items, setItems, roster, settings, updateItem, onNex
       .filter((f) => !items.some((i) => i.fileName === f.name))
       .map((f) => ({
         file: f,
-        item: { key: `f${++seq}`, fileName: f.name, status: 'reading', entryId: null, spans: [], code: uniqueCode(taken), reviewed: false },
+        item: { key: `f${++seq}`, fileName: f.name, status: 'reading', entryId: null, spans: [], code: uniqueTag(taken), rank: randomRank(), reviewed: false },
       }));
     setItems((list) => [...list, ...fresh.map((x) => x.item)]);
     // one at a time keeps the page responsive

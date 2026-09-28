@@ -156,3 +156,52 @@ test('essays added before the roster are matched once the roster loads', async (
   await page.getByRole('tab', { name: /Essays/ }).click();
   await expect(page.locator('.badge.high')).toHaveCount(2);
 });
+
+test('choose what to remove and how files are named', async ({ page }) => {
+  await page.goto(APP);
+  await page.locator('input[type=file]').first().setInputFiles(join(FX, 'roster.csv'));
+  await page.getByRole('button', { name: 'Names only' }).click();
+  await expect(page.getByRole('checkbox', { name: /Email addresses/ })).not.toBeChecked();
+  await expect(page.getByRole('checkbox', { name: /Student's name/ })).toBeChecked();
+  await page.screenshot({ path: join(SHOTS, '6-what-to-remove.png'), fullPage: true });
+  await page.getByRole('button', { name: 'Next: add essays →' }).click();
+  await page.locator('input[type=file]').first().setInputFiles([join(FX, 'Okafor_Essay_Final.docx'), join(FX, 'young_reading_the_river.pdf')]);
+  await expect(page.getByText('Reading…')).toHaveCount(0, { timeout: 30_000 });
+  await page.getByRole('button', { name: 'Next: review →' }).click();
+  // the email is kept but still highlighted
+  await expect(page.locator('mark.flag', { hasText: 'amara.okafor@example.edu' })).toBeVisible();
+  await page.getByRole('tab', { name: /Export/ }).click();
+
+  await page.getByRole('radio', { name: /Number/ }).check();
+  await expect(page.getByLabel('Label prefix (optional)')).toHaveValue('Essay');
+  await page.getByLabel(/File name pattern/).fill('Writing Award - {label}');
+  await page.getByLabel('ZIP file name').fill('award-entries');
+  await expect(page.locator('.preview-names')).toContainText('Writing Award - Essay 01.docx');
+  await page.getByRole('button', { name: /Create 2 anonymized files/ }).click();
+  await expect(page.getByText('✓ No identifying text found')).toHaveCount(2, { timeout: 60_000 });
+
+  // a file name containing a student name blocks the download until fixed
+  const first = page.getByLabel(/File name for Essay/).first();
+  await first.fill('Okafor final');
+  await expect(page.getByText(/Contains a name from the roster/)).toBeVisible();
+  await expect(page.getByRole('button', { name: /Download anonymized essays/ })).toBeDisabled();
+  await first.fill('Finalist A');
+  await page.screenshot({ path: join(SHOTS, '7-naming.png'), fullPage: true });
+
+  const [zipDl] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: /Download anonymized essays/ }).click()]);
+  expect(zipDl.suggestedFilename()).toBe('award-entries.zip');
+  const zip = await JSZip.loadAsync(readFileSync(await zipDl.path()));
+  const names = Object.keys(zip.files).sort();
+  expect(names).toEqual(expect.arrayContaining(['Finalist A.docx']));
+  expect(names.some((n) => /^Writing Award - Essay 0[12]\.docx$/.test(n))).toBe(true);
+  // label inside the document matches, and the kept email is still there
+  let all = '';
+  for (const n of names) {
+    const inner = await JSZip.loadAsync(await zip.file(n)!.async('uint8array'));
+    all += await inner.file('word/document.xml')!.async('string');
+  }
+  expect(all).toMatch(/Essay 0[12]/);
+  expect(all).not.toContain('Essay Essay');
+  expect(all).toContain('amara.okafor@example.edu');
+  expect(all).not.toMatch(/Amara Okafor|Grace Young/);
+});

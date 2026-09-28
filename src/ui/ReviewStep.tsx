@@ -10,13 +10,14 @@ interface Props {
   items: EssayItem[];
   roster: RosterEntry[];
   settings: Settings;
+  labels: Map<string, string>;
   selected: string | null;
   onSelect: (key: string) => void;
   updateItem: (key: string, fn: (it: EssayItem) => EssayItem) => void;
   onDone: () => void;
 }
 
-export function ReviewStep({ items, roster, selected, onSelect, updateItem, onDone }: Props) {
+export function ReviewStep({ items, roster, labels, selected, onSelect, updateItem, onDone }: Props) {
   const current = items.find((i) => i.key === selected) ?? items[0];
   if (!current) {
     return (
@@ -41,7 +42,7 @@ export function ReviewStep({ items, roster, selected, onSelect, updateItem, onDo
           const flg = it.spans.filter((s) => s.action === 'flag').length;
           return (
             <button key={it.key} class={`essay-item ${it.key === current.key ? 'active' : ''}`} onClick={() => onSelect(it.key)}>
-              <span class="code">{it.code}</span>
+              <span class="code">{labels.get(it.key)}</span>
               <span class="who">{st?.name ?? <i>no student matched</i>}</span>
               <span class="fname muted">{it.fileName}</span>
               <span class="stats">
@@ -57,7 +58,14 @@ export function ReviewStep({ items, roster, selected, onSelect, updateItem, onDo
           );
         })}
       </aside>
-      <EssayReview key={current.key} item={current} student={roster.find((r) => r.id === current.entryId)} updateItem={updateItem} onNext={next} />
+      <EssayReview
+        key={current.key}
+        item={current}
+        label={labels.get(current.key) ?? current.code}
+        student={roster.find((r) => r.id === current.entryId)}
+        updateItem={updateItem}
+        onNext={next}
+      />
     </section>
   );
 }
@@ -71,7 +79,7 @@ interface Selection {
 
 const MANUAL_CATEGORIES: Category[] = ['MANUAL', 'STUDENT', 'INSTRUCTOR', 'PERSON', 'COURSE', 'SCHOOL', 'ID'];
 
-function EssayReview({ item, student, updateItem, onNext }: { item: EssayItem; student?: RosterEntry; updateItem: Props['updateItem']; onNext: () => void }) {
+function EssayReview({ item, label, student, updateItem, onNext }: { item: EssayItem; label: string; student?: RosterEntry; updateItem: Props['updateItem']; onNext: () => void }) {
   const essay = item.parsed!;
   const [mode, setMode] = useState<'marks' | 'result'>('marks');
   const [sel, setSel] = useState<Selection | null>(null);
@@ -155,7 +163,7 @@ function EssayReview({ item, student, updateItem, onNext }: { item: EssayItem; s
     { title: 'Essay', blocks: essay.blocks.filter((b) => (b.kind === 'body' || b.kind === 'textbox') && b.text.trim()) },
     {
       title: 'Page headers & footers',
-      note: essay.format === 'pdf' ? `In the output these are replaced by “${item.code} <page>”.` : undefined,
+      note: essay.format === 'pdf' ? `In the output these are replaced by “${label} <page>”.` : undefined,
       blocks: essay.blocks.filter((b) => (b.kind === 'header' || b.kind === 'footer') && b.text.trim()),
     },
     { title: 'Footnotes & endnotes', blocks: essay.blocks.filter((b) => b.kind === 'note' && b.text.trim()) },
@@ -169,7 +177,7 @@ function EssayReview({ item, student, updateItem, onNext }: { item: EssayItem; s
       <div class="review-head">
         <div>
           <h2>
-            {item.fileName} <span class="arrow">→</span> <span class="code big">{item.code}.docx</span>
+            {item.fileName} <span class="arrow">→</span> <span class="code big">{label}</span>
           </h2>
           <p class="muted">
             {student ? (
@@ -215,7 +223,7 @@ function EssayReview({ item, student, updateItem, onNext }: { item: EssayItem; s
           <select value={cat} onChange={(e) => setCat((e.target as HTMLSelectElement).value as Category)} aria-label="Replace with">
             {MANUAL_CATEGORIES.map((c) => (
               <option key={c} value={c}>
-                as {replacementFor({ category: c } as Span, undefined, item.code)}
+                as {replacementFor({ category: c } as Span, undefined, label)}
               </option>
             ))}
           </select>
@@ -233,7 +241,7 @@ function EssayReview({ item, student, updateItem, onNext }: { item: EssayItem; s
                 <h4>{g.title}</h4>
                 {g.note && <p class="muted small">{g.note}</p>}
                 {g.blocks.map((b) => (
-                  <BlockView key={b.id} block={b} spans={byBlock.get(b.id) ?? []} mode={mode} code={item.code} onToggle={toggle} />
+                  <BlockView key={b.id} block={b} spans={byBlock.get(b.id) ?? []} mode={mode} code={label} onToggle={toggle} />
                 ))}
               </div>
             ),

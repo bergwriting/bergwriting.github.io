@@ -19,6 +19,24 @@ export function randomCode(prefix = 'WP'): string {
   return `${prefix}-${s}`;
 }
 
+/** A random 4-character tag (e.g. 7K3Q) not in `taken`. */
+export function uniqueTag(taken: Set<string>): string {
+  for (;;) {
+    const t = randomCode('').slice(1);
+    if (!taken.has(t)) {
+      taken.add(t);
+      return t;
+    }
+  }
+}
+
+/** A random number in [0, 1) from the secure generator, used to shuffle essay numbers. */
+export function randomRank(): number {
+  const buf = new Uint32Array(2);
+  crypto.getRandomValues(buf);
+  return (buf[0] * 2 ** 21 + (buf[1] >>> 11)) / 2 ** 53;
+}
+
 /** A code not in `taken`. Codes are random, never sequential, so order reveals nothing. */
 export function uniqueCode(taken: Set<string>, prefix = 'WP'): string {
   for (;;) {
@@ -32,6 +50,7 @@ export function uniqueCode(taken: Set<string>, prefix = 'WP'): string {
 
 export interface KeyRow {
   code: string;
+  outputFile: string;
   originalFile: string;
   student: string;
   instructor: string;
@@ -43,7 +62,8 @@ export interface KeyRow {
 }
 
 const COLUMNS: [keyof KeyRow, string][] = [
-  ['code', 'Essay code'],
+  ['code', 'Essay label'],
+  ['outputFile', 'Anonymized file'],
   ['originalFile', 'Original file'],
   ['student', 'Student'],
   ['instructor', 'Instructor'],

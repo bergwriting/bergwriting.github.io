@@ -9,6 +9,8 @@ export interface EssayResult {
   error?: string;
   /** Reviewer chose to include the essay despite possible leaks. */
   override: boolean;
+  /** The label written into this file; if the label setting changes, the file must be re-created. */
+  label: string;
 }
 
 export interface EssayItem {
@@ -19,7 +21,12 @@ export interface EssayItem {
   entryId: string | null;
   match?: MatchResult;
   spans: Span[];
+  /** Random 4-character tag; the visible label is built from it (see naming.ts). */
   code: string;
+  /** Random position used when essays are numbered. */
+  rank: number;
+  /** File name typed by the reviewer for this essay (without .docx). */
+  fileNameOverride?: string;
   reviewed: boolean;
   result?: EssayResult;
 }

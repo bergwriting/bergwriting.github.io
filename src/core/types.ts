@@ -62,7 +62,54 @@ export interface Settings {
   coursePrefixes: string;
   /** Flag (not redact) other person names found by the lexicon. */
   flagOtherNames: boolean;
+  /** Which kinds of detail to remove. Switched-off kinds are still highlighted (kept) in review. */
+  remove: Record<RemoveKey, boolean>;
+  /** How essays are labelled inside the document and named on disk. */
+  naming: Naming;
 }
+
+/** The kinds of identifying detail a committee can choose to remove. */
+export type RemoveKey = 'studentName' | 'instructor' | 'classmates' | 'course' | 'school' | 'email' | 'phone' | 'ids' | 'links' | 'dates';
+
+export const REMOVE_OPTIONS: { key: RemoveKey; label: string; hint: string }[] = [
+  { key: 'studentName', label: "Student's name", hint: 'Every form: full, first, last, initials, preferred name; also names hidden in the file' },
+  { key: 'instructor', label: 'Instructor / professor', hint: 'From the roster, and "Professor X" anywhere' },
+  { key: 'classmates', label: 'Other students on the roster', hint: 'Classmates, roommates, co-authors named in the essay' },
+  { key: 'course', label: 'Course and section', hint: 'e.g. ENG 101-03' },
+  { key: 'school', label: 'School / college name', hint: 'Names listed under Settings' },
+  { key: 'email', label: 'Email addresses', hint: 'Often contain the student\'s name' },
+  { key: 'phone', label: 'Phone numbers', hint: '' },
+  { key: 'ids', label: 'Student ID numbers', hint: 'Format set under Settings' },
+  { key: 'links', label: 'Personal links', hint: 'Shared Google Docs, LinkedIn, social media (cited sources are always kept)' },
+  { key: 'dates', label: 'Heading dates', hint: 'The date line at the top of the essay' },
+];
+
+export const REMOVE_PRESETS: { id: string; label: string; keys: RemoveKey[] }[] = [
+  { id: 'all', label: 'Everything (recommended)', keys: REMOVE_OPTIONS.map((o) => o.key) },
+  { id: 'names', label: 'Names only', keys: ['studentName', 'instructor', 'classmates'] },
+  { id: 'contact', label: 'Names + contact details', keys: ['studentName', 'instructor', 'classmates', 'email', 'phone', 'ids', 'links'] },
+];
+
+export interface Naming {
+  /** `code`: random code like WP-7K3Q. `number`: 01, 02… assigned in random order. */
+  style: 'code' | 'number';
+  /** Text before the code or number, e.g. "WP" or "Essay". */
+  prefix: string;
+  /** File-name pattern; {label} is replaced with the essay label. */
+  pattern: string;
+  /** Name of the ZIP file (without .zip); {date} allowed. */
+  zipName: string;
+  /** Name of the key file (without extension); {date} allowed. */
+  keyName: string;
+}
+
+export const DEFAULT_NAMING: Naming = {
+  style: 'code',
+  prefix: 'WP',
+  pattern: '{label}',
+  zipName: 'anonymized-essays-{date}',
+  keyName: 'KEY-CONFIDENTIAL-{date}',
+};
 
 export const DEFAULT_SETTINGS: Settings = {
   institutions: '',
@@ -70,7 +117,19 @@ export const DEFAULT_SETTINGS: Settings = {
   idPattern: String.raw`\b\d{7,9}\b`,
   coursePrefixes: 'ENG, ENGL, WRT, WRI, WRIT, WRTG, FYS, FYW, FYWS, RHET, COMP, CW, LIT',
   flagOtherNames: true,
+  remove: Object.fromEntries(REMOVE_OPTIONS.map((o) => [o.key, true])) as Record<RemoveKey, boolean>,
+  naming: DEFAULT_NAMING,
 };
+
+/** Fill in any options missing from settings saved by an older version. */
+export function completeSettings(s: Partial<Settings>): Settings {
+  return {
+    ...DEFAULT_SETTINGS,
+    ...s,
+    remove: { ...DEFAULT_SETTINGS.remove, ...(s.remove ?? {}) },
+    naming: { ...DEFAULT_NAMING, ...(s.naming ?? {}) },
+  };
+}
 
 export interface ParsedEssay {
   fileName: string;

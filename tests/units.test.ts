@@ -9,7 +9,9 @@ import { applyEditsToRuns } from '../src/formats/pdfOut';
 import { stripJpeg, stripPng } from '../src/formats/images';
 import { decryptText, encryptText, keyCsv, uniqueCode } from '../src/key';
 import { DEFAULT_SETTINGS, type Block, type Span } from '../src/core/types';
-import { resolveSpans } from '../src/detect';
+import { resolveSpans, applyRemoveChoices } from '../src/detect';
+import { essayLabels, fileNameFor, namesInFileName, sanitizeFileName, uniqueNames } from '../src/naming';
+import { DEFAULT_NAMING } from '../src/core/types';
 
 const block = (text: string, kind: Block['kind'] = 'body', id = 'b1'): Block => ({ id, kind, text });
 const spanText = (b: Block, s: Span) => b.text.slice(s.start, s.end);
@@ -152,9 +154,60 @@ describe('key', () => {
     await expect(decryptText(enc, 'wrong')).rejects.toThrow(/passphrase/);
   });
   it('writes CSV safely', () => {
-    const csv = keyCsv([{ code: 'WP-AAAA', originalFile: 'a,b.docx', student: '=cmd()', instructor: '', course: '', email: '', status: 'ok', redactions: 'x "y"', notes: '' }]);
+    const csv = keyCsv([{ code: 'WP-AAAA', outputFile: 'WP-AAAA.docx', originalFile: 'a,b.docx', student: '=cmd()', instructor: '', course: '', email: '', status: 'ok', redactions: 'x "y"', notes: '' }]);
     expect(csv).toContain('"a,b.docx"');
     expect(csv).toContain("'=cmd()");
     expect(csv).toContain('"x ""y"""');
+  });
+});
+
+describe('what to remove', () => {
+  const mk = (category: Span['category'], source = 'pattern'): Span => ({ id: category, blockId: 'b', start: 0, end: 1, category, action: 'redact', source, label: 'x' });
+  it('keeps (as highlights) the kinds that are switched off', () => {
+    const remove = { ...DEFAULT_SETTINGS.remove, email: false, dates: false, classmates: false };
+    const out = applyRemoveChoices([mk('STUDENT', 'roster'), mk('EMAIL'), mk('DATE', 'header-block'), mk('STUDENT', 'roster-other'), mk('MANUAL', 'manual')], remove);
+    expect(out.map((s) => `${s.category}:${s.source}:${s.action}`)).toEqual([
+      'STUDENT:roster:redact',
+      'EMAIL:pattern:flag',
+      'DATE:header-block:flag',
+      'STUDENT:roster-other:flag',
+      'MANUAL:manual:redact',
+    ]);
+  });
+});
+
+describe('naming', () => {
+  const items = [
+    { key: 'a', code: '7K3Q', rank: 0.9 },
+    { key: 'b', code: 'M4XP', rank: 0.1 },
+    { key: 'c', code: 'T9AC', rank: 0.5 },
+  ];
+  it('codes use the prefix', () => {
+    expect([...essayLabels(items, DEFAULT_NAMING).values()]).toEqual(['WP-7K3Q', 'WP-M4XP', 'WP-T9AC']);
+    expect(essayLabels(items, { ...DEFAULT_NAMING, prefix: '' }).get('a')).toBe('7K3Q');
+  });
+  it('numbers follow the random rank, not the upload order', () => {
+    const l = essayLabels(items, { ...DEFAULT_NAMING, style: 'number', prefix: 'Essay' });
+    expect([l.get('a'), l.get('b'), l.get('c')]).toEqual(['Essay 03', 'Essay 01', 'Essay 02']);
+  });
+  it('builds safe file names from the pattern', () => {
+    expect(fileNameFor('WP-7K3Q', '{label}', '2026-09-28')).toBe('WP-7K3Q');
+    expect(fileNameFor('Essay 01', 'Writing Award {date} - {label}', '2026-09-28')).toBe('Writing Award 2026-09-28 - Essay 01');
+    expect(fileNameFor('WP-7K3Q', 'Prize', 'd')).toBe('Prize WP-7K3Q');
+    expect(sanitizeFileName('a/b:c*?"<>|d')).toBe('a b c d');
+    expect(uniqueNames(['x', 'X', 'y', 'x'])).toEqual(['x', 'X (2)', 'y', 'x (3)']);
+  });
+  it('spots student names in file names', () => {
+    const roster = [{ id: 'r', name: 'Grace Young', otherNames: [], instructor: 'Alan Whitfield', email: 'gyoung@example.edu' }];
+    expect(namesInFileName('young_final', roster)).toEqual(['Grace Young']);
+    expect(namesInFileName('Essay by Whitfield student', roster)).toEqual(['Alan Whitfield']);
+    expect(namesInFileName('gyoung-essay', roster)).toEqual(['Grace Young', 'gyoung@example.edu']);
+    expect(namesInFileName('Writing Award - WP-7K3Q', roster)).toEqual([]);
+  });
+  it('does not write "Essay Essay 01" in the heading', () => {
+    const b = block('Grace Young');
+    const span: Span = { id: '1', blockId: 'b1', start: 0, end: 11, category: 'STUDENT', action: 'redact', source: 'header-block', label: '', replacement: 'Essay {CODE}' };
+    expect(applyEditsToString(b.text, buildEdits([b], [span], 'Essay 01').get('b1')!)).toBe('Essay 01');
+    expect(applyEditsToString(b.text, buildEdits([b], [span], 'WP-7K3Q').get('b1')!)).toBe('Essay WP-7K3Q');
   });
 });

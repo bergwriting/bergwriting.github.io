@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks';
 import type { RosterEntry, Settings } from '../core/types';
-import { DEFAULT_SETTINGS } from '../core/types';
+import { DEFAULT_SETTINGS, REMOVE_OPTIONS, REMOVE_PRESETS } from '../core/types';
 import { FIELD_LABELS, guessMapping, parseRosterText, type ColumnMapping, type RosterField, type RosterTable } from '../core/roster';
 import { readXlsx } from '../core/xlsx';
 import { DropZone } from './DropZone';
@@ -153,6 +153,8 @@ export function RosterStep({ table, mapping, roster, settings, onTable, onMappin
         </div>
       </div>
 
+      <WhatToRemove settings={settings} onSettings={onSettings} />
+
       <details class="card settings">
         <summary>
           <h3>Settings</h3>
@@ -185,12 +187,8 @@ export function RosterStep({ table, mapping, roster, settings, onTable, onMappin
             />
             {!idPatternOk && <small class="error">Not a valid pattern — it will be ignored.</small>}
           </label>
-          <label class="check">
-            <input type="checkbox" checked={settings.flagOtherNames} onChange={(e) => onSettings({ ...settings, flagOtherNames: (e.target as HTMLInputElement).checked })} />
-            <span>Highlight other people's names (cited authors, friends) for review. They are kept unless you click them.</span>
-          </label>
           <div>
-            <button class="btn subtle" onClick={() => onSettings({ ...DEFAULT_SETTINGS })}>
+            <button class="btn subtle" onClick={() => onSettings({ ...DEFAULT_SETTINGS, remove: settings.remove, naming: settings.naming })}>
               Reset settings
             </button>
           </div>
@@ -204,5 +202,64 @@ export function RosterStep({ table, mapping, roster, settings, onTable, onMappin
         </button>
       </div>
     </section>
+  );
+}
+
+/** Choose which kinds of identifying detail are removed. */
+export function WhatToRemove({ settings, onSettings }: { settings: Settings; onSettings: (s: Settings) => void }) {
+  const on = REMOVE_OPTIONS.filter((o) => settings.remove[o.key]).map((o) => o.key);
+  const preset = REMOVE_PRESETS.find((p) => p.keys.length === on.length && p.keys.every((k) => settings.remove[k]));
+  const setAll = (keys: string[]) =>
+    onSettings({ ...settings, remove: Object.fromEntries(REMOVE_OPTIONS.map((o) => [o.key, keys.includes(o.key)])) as Settings['remove'] });
+  return (
+    <div class="card remove-card">
+      <div class="remove-head">
+        <div>
+          <h3>What to remove</h3>
+          <p class="muted small">
+            Choose a preset or tick exactly what you want. Anything left unticked stays in the essay but is still highlighted in Review, so you can remove it
+            case by case. Remembered on this computer.
+          </p>
+        </div>
+        <div class="seg presets" role="group" aria-label="Presets">
+          {REMOVE_PRESETS.map((p) => (
+            <button key={p.id} class={preset?.id === p.id ? 'on' : ''} aria-pressed={preset?.id === p.id} onClick={() => setAll(p.keys)}>
+              {p.label}
+            </button>
+          ))}
+          <button class={!preset ? 'on' : ''} aria-pressed={!preset} disabled>
+            Custom
+          </button>
+        </div>
+      </div>
+      <div class="remove-grid">
+        {REMOVE_OPTIONS.map((o) => (
+          <label class="check" key={o.key}>
+            <input
+              type="checkbox"
+              checked={settings.remove[o.key]}
+              onChange={(e) => onSettings({ ...settings, remove: { ...settings.remove, [o.key]: (e.target as HTMLInputElement).checked } })}
+            />
+            <span>
+              <b>{o.label}</b>
+              {o.hint && <small class="muted"> — {o.hint}</small>}
+            </span>
+          </label>
+        ))}
+        <label class="check">
+          <input type="checkbox" checked={settings.flagOtherNames} onChange={(e) => onSettings({ ...settings, flagOtherNames: (e.target as HTMLInputElement).checked })} />
+          <span>
+            <b>Highlight other people's names</b>
+            <small class="muted"> — cited authors, friends; kept unless you click them</small>
+          </span>
+        </label>
+      </div>
+      {!settings.remove.studentName && <p class="warn-text small">The student's name will not be removed — the essays will not be anonymous.</p>}
+      {settings.remove.studentName && !settings.remove.email && <p class="warn-text small">Heads-up: email addresses usually contain the student's name.</p>}
+      <p class="muted small">
+        Always removed, whatever you choose: names hidden in the file itself (document properties, comment and tracked-change authors, the thumbnail),
+        plus any custom terms from Settings and anything you remove by hand.
+      </p>
+    </div>
   );
 }

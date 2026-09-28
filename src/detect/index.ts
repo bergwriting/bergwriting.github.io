@@ -1,4 +1,4 @@
-import type { ParsedEssay, RosterEntry, Settings, Span } from '../core/types';
+import type { ParsedEssay, RemoveKey, RosterEntry, Settings, Span } from '../core/types';
 import { rosterSpans } from './roster';
 import { patternSpans } from './patterns';
 import { headerBlockSpans, runningHeaderSpans } from './headerBlock';
@@ -61,7 +61,8 @@ export function detectAll(essay: ParsedEssay, ctx: DetectContext): Span[] {
   const propagated = findTermSpans(essay.blocks, discoveredNameGroups(essay, [...header, ...base], ctx));
   const names = ctx.settings.flagOtherNames ? otherNameSpans(essay.blocks.filter((b) => b.kind === 'body' || b.kind === 'note')) : [];
   const order = new Map(essay.blocks.map((b, i) => [b.id, i]));
-  return resolveSpans([...header, ...base, ...propagated, ...names]).sort(
+  const chosen = applyRemoveChoices([...header, ...base, ...propagated], ctx.settings.remove);
+  return resolveSpans([...chosen, ...names]).sort(
     (a, b) => (order.get(a.blockId) ?? 0) - (order.get(b.blockId) ?? 0) || a.start - b.start,
   );
 }
@@ -88,4 +89,42 @@ function discoveredNameGroups(essay: ParsedEssay, spans: Span[], ctx: DetectCont
   }
   if (!phrases.length && !words.length) return [];
   return [{ category: 'STUDENT', action: 'redact', label: 'Name from essay heading', source: 'heading-name', phrases, words }];
+}
+
+/** Which "what to remove" option controls a span; null = always removed (custom terms, manual). */
+export function removeKeyFor(s: Pick<Span, 'category' | 'source'>): RemoveKey | null {
+  switch (s.category) {
+    case 'STUDENT':
+      return s.source === 'roster-other' ? 'classmates' : 'studentName';
+    case 'PERSON':
+      return 'studentName';
+    case 'INSTRUCTOR':
+      return 'instructor';
+    case 'COURSE':
+      return 'course';
+    case 'SCHOOL':
+      return 'school';
+    case 'EMAIL':
+      return 'email';
+    case 'PHONE':
+      return 'phone';
+    case 'ID':
+      return 'ids';
+    case 'URL':
+      return 'links';
+    case 'DATE':
+      return 'dates';
+    default:
+      return null;
+  }
+}
+
+/** Kinds the committee chose not to remove are kept, but still highlighted so a reviewer can remove one by hand. */
+export function applyRemoveChoices(spans: Span[], remove: Record<RemoveKey, boolean> | undefined): Span[] {
+  if (!remove) return spans;
+  return spans.map((s) => {
+    const key = removeKeyFor(s);
+    if (s.action !== 'redact' || !key || remove[key] !== false) return s;
+    return { ...s, action: 'flag', label: `${s.label} (kept: switched off in “What to remove”)` };
+  });
 }

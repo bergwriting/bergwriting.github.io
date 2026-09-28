@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { DEFAULT_SETTINGS, type RosterEntry, type Settings } from '../core/types';
+import { DEFAULT_SETTINGS, completeSettings, type RosterEntry, type Settings } from '../core/types';
+import { essayLabels } from '../naming';
 import { buildRoster, matchEssay, type ColumnMapping, type RosterTable } from '../core/roster';
 import { loadJson, saveJson } from './util';
 import { CHOSEN_BY_YOU, redetect, type EssayItem } from './state';
@@ -23,7 +24,7 @@ const SETTINGS_KEY = 'essay-anonymizer-settings-v1';
 
 export function App() {
   const [tab, setTab] = useState<Tab>('roster');
-  const [settings, setSettingsState] = useState<Settings>(() => loadJson(SETTINGS_KEY, DEFAULT_SETTINGS));
+  const [settings, setSettingsState] = useState<Settings>(() => completeSettings(loadJson(SETTINGS_KEY, DEFAULT_SETTINGS)));
   const [table, setTable] = useState<RosterTable | null>(null);
   const [mapping, setMapping] = useState<ColumnMapping>({});
   const [items, setItems] = useState<EssayItem[]>([]);
@@ -36,7 +37,9 @@ export function App() {
     saveJson(SETTINGS_KEY, s);
   }, []);
 
-  // Re-run detection when the roster or settings change.
+  // Re-run detection when the roster or detection settings change (not when only file names change).
+  const { naming, ...detectionSettings } = settings;
+  const detectionKey = JSON.stringify(detectionSettings);
   const first = useRef(true);
   useEffect(() => {
     if (first.current) {
@@ -58,7 +61,8 @@ export function App() {
       );
     }, 300);
     return () => clearTimeout(t);
-  }, [roster, settings]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roster, detectionKey]);
 
   const updateItem = useCallback((key: string, fn: (it: EssayItem) => EssayItem) => {
     setItems((list) => list.map((it) => (it.key === key ? fn(it) : it)));
@@ -66,6 +70,7 @@ export function App() {
 
   const ready = items.filter((i) => i.status === 'ready');
   const reviewed = ready.filter((i) => i.reviewed).length;
+  const labels = useMemo(() => essayLabels(ready, naming), [ready.map((i) => i.key).join(), naming.style, naming.prefix]);
 
   return (
     <div class="app">
@@ -132,13 +137,27 @@ export function App() {
             items={ready}
             roster={roster}
             settings={settings}
+            labels={labels}
             selected={selected}
             onSelect={setSelected}
             updateItem={updateItem}
             onDone={() => setTab('export')}
           />
         )}
-        {tab === 'export' && <ExportStep items={items} roster={roster} updateItem={updateItem} onReview={(k) => { setSelected(k); setTab('review'); }} />}
+        {tab === 'export' && (
+          <ExportStep
+            items={items}
+            roster={roster}
+            settings={settings}
+            labels={labels}
+            onSettings={setSettings}
+            updateItem={updateItem}
+            onReview={(k) => {
+              setSelected(k);
+              setTab('review');
+            }}
+          />
+        )}
         {tab === 'key' && <DecryptTab />}
       </main>
     </div>

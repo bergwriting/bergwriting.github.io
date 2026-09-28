@@ -1,4 +1,4 @@
-import type { ParsedEssay, RosterEntry, Span } from './core/types';
+import type { ParsedEssay, RemoveKey, RosterEntry, Span } from './core/types';
 import { buildEdits } from './core/replace';
 import { leakTerms } from './core/scrub';
 import { FormatError, docxBlocks, loadDocx, writeDocx } from './formats/docx';
@@ -34,10 +34,16 @@ export interface ExportResult {
 }
 
 /** Produce the anonymized .docx for one essay and check it for leftovers. */
-export async function exportEssay(essay: ParsedEssay, spans: Span[], code: string, student: RosterEntry | undefined): Promise<ExportResult> {
+export async function exportEssay(
+  essay: ParsedEssay,
+  spans: Span[],
+  code: string,
+  student: RosterEntry | undefined,
+  remove?: Record<RemoveKey, boolean>,
+): Promise<ExportResult> {
   if (essay.fatal) throw new Error(essay.fatal);
   const edits = buildEdits(essay.blocks, spans, code);
-  const terms = leakTerms(student, essay.blocks, spans);
+  const terms = leakTerms(student, essay.blocks, spans, remove);
   let bytes: Uint8Array;
   if (essay.format === 'docx') {
     const m = await loadDocx(essay.bytes);

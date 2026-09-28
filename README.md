@@ -10,6 +10,13 @@ Anonymizes student essays (.docx and PDF) for blind review by the writing progra
 
 1. **Roster.** Load the submissions spreadsheet as .csv or .xlsx, or paste the rows. Then map the columns: student name (required), and optionally file name, instructor, course, email, and preferred name. The roster is kept only in the open window and is never saved.
    Under *Settings*, add your school name(s) (for example `Muhlenberg College` and `Muhlenberg`) and any other words to always remove. Settings are remembered on this computer.
+   Under *What to remove*, choose a preset or tick exactly what you want:
+   - **Everything** (recommended): names, instructor, classmates, course, school, email, phone, IDs, personal links and heading dates.
+   - **Names only**: the student, the instructor and other students on the roster.
+   - **Names + contact details**: names plus email, phone, IDs and personal links.
+   - **Custom**: any combination of the checkboxes.
+
+   Anything you leave unticked stays in the essay but is still highlighted in Review, so you can remove single cases. Names hidden inside the file itself (document properties, comment authors, the thumbnail) are always removed.
 2. **Essays.** Drop in all the .docx and .pdf files. Each one is matched to a roster row by its file name or by the name found inside it; check the matches and fix any that are wrong.
    - Google Docs: *File › Download › Microsoft Word (.docx)*.
    - Pages: *File › Export To › Word*.
@@ -19,12 +26,19 @@ Anonymizes student essays (.docx and PDF) for blind review by the writing progra
    - **Amber** means the text is kept but worth a glance. These are cited authors, other people's names, and links.
 
    Click a highlight to switch it. The switch applies to all identical text; Alt-click switches just one. Select any text and press *Remove selected text* to catch something that was missed. *Result* shows exactly what reviewers will see.
-4. **Export.** *Create files* builds `WP-XXXX.docx` for each essay, then re-opens every file and searches it, including hidden parts, for the student's name, email and everything you removed. Anything suspicious is listed before you can download. You then download two separate things:
-   - `anonymized-essays-DATE.zip`: send this to the reviewers.
-   - `KEY-CONFIDENTIAL-DATE.csv`, or `.enc` if you set a passphrase: keep this yourself. It lists which code is which student, and what was removed from each essay.
+4. **Export.** First choose the labels and file names:
+   - **Label style:** a random code (`WP-7K3Q`) or a number (`Essay 01`, `Essay 02`…). Numbers are handed out in random order, never upload or alphabetical order. The label is written into each essay's heading and page header, and you can change or remove the prefix.
+   - **File name pattern:** for example `{label}`, or `Writing Award {date} - {label}`. You can also rename any single file in the results table.
+   - **ZIP and key file names:** editable, with `{date}` available.
+
+   If a file or ZIP name you type contains a student's or instructor's name, the download is held until you change it.
+
+   *Create files* then builds a .docx for each essay, then re-opens every file and searches it, including hidden parts, for the student's name, email and everything you removed. Anything suspicious is listed before you can download. You then download two separate things:
+   - The ZIP of essays (by default `anonymized-essays-DATE.zip`): send this to the reviewers.
+   - The key (by default `KEY-CONFIDENTIAL-DATE.csv`, or `.enc` if you set a passphrase): keep this yourself. It lists each essay's label and file name, the student, and what was removed.
 5. **Look up key.** After judging, open the key in the *Look up key* tab. An encrypted key needs its passphrase, and it cannot be recovered without it.
 
-Essay codes are random (e.g. `WP-7K3Q`), not numbered in upload order, so the order reveals nothing.
+Codes and numbers are assigned at random, so their order reveals nothing about who wrote what.
 
 ## What gets removed
 

@@ -8,6 +8,8 @@ export interface Edit {
 }
 
 export function replacementFor(span: Span, block: Block | undefined, code: string): string {
+  // heading line: "Essay WP-7K3Q", but not "Essay Essay 07" when the label already says it
+  if (span.replacement === 'Essay {CODE}' && /^essay\b/i.test(code)) return code;
   if (span.replacement) return span.replacement.replace(/\{CODE\}/g, code);
   if (block && (block.kind === 'header' || block.kind === 'footer') && span.category === 'STUDENT') return code;
   return PLACEHOLDER[span.category];

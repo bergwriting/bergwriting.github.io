@@ -1,4 +1,4 @@
-import type { Span, Block, RosterEntry } from './types';
+import type { Span, Block, RemoveKey, RosterEntry } from './types';
 import { escapeRegex, findFolded, fold, foldString, isUpperStart, phraseSource, wordRegex } from './text';
 import { nameVariants } from './names';
 
@@ -38,21 +38,21 @@ const STRONG = new Set(['STUDENT', 'INSTRUCTOR', 'EMAIL', 'PHONE', 'ID', 'PERSON
  * Terms for the hidden-place scrub and the final leak check: the student's roster
  * name forms and email, plus every piece of text the reviewer chose to redact.
  */
-export function leakTerms(student: RosterEntry | undefined, blocks: Block[], spans: Span[]): ScrubTerm[] {
+export function leakTerms(student: RosterEntry | undefined, blocks: Block[], spans: Span[], remove?: Record<RemoveKey, boolean>): ScrubTerm[] {
   const byId = new Map(blocks.map((b) => [b.id, b]));
   const terms = new Map<string, ScrubTerm>();
   const add = (label: string, text: string) => {
     const t = makeTerm(label, text);
     if (t && !terms.has(t.re.source)) terms.set(t.re.source, t);
   };
-  if (student) {
+  if (student && remove?.studentName !== false) {
     for (const n of [student.name, ...student.otherNames]) {
       const v = nameVariants(n);
       for (const ph of v.phrases) terms.set(ph, { label: 'Student name', re: wordRegex(ph), single: false });
       for (const w of v.words) if (w.length >= 3) terms.set(w, { label: 'Student name', re: wordRegex(escapeRegex(w)), single: true });
     }
-    if (student.email) add('Student email', student.email);
   }
+  if (student?.email && remove?.email !== false) add('Student email', student.email);
   for (const s of spans) {
     if (s.action !== 'redact' || !STRONG.has(s.category)) continue;
     const b = byId.get(s.blockId);

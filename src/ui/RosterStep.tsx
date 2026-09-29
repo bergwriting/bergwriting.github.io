@@ -56,17 +56,19 @@ export function RosterStep({ table, mapping, roster, settings, onTable, onMappin
   return (
     <section class="step">
       <div class="step-intro">
-        <h2>Load the submission roster</h2>
+        <h2>Settings &amp; roster</h2>
         <p>
-          A spreadsheet with one row per essay: at least the student's name, ideally also the file name, instructor, course and email. Names are looked
-          for in every essay, so the more you include, the more reliable the result. Export it from Excel or Google Sheets as <b>.csv</b> or <b>.xlsx</b>, or
-          paste the rows below. The roster stays in this window only and is never saved.
+          By default only the <b>writer's name</b> is removed. You'll confirm each writer's name in step 2 (the tool suggests it from the file). A roster
+          is <b>optional</b>: if you have a spreadsheet of submissions (name, file name…), load it and names are matched automatically. It stays in this
+          window only and is never saved.
         </p>
       </div>
 
+      <WhatToRemove settings={settings} onSettings={onSettings} />
+
       <div class="grid2">
         <div class="card">
-          <h3>Roster file</h3>
+          <h3>Roster file (optional)</h3>
           <DropZone accept=".csv,.tsv,.txt,.xlsx" multiple={false} onFiles={onFiles} label="Drop a .csv or .xlsx roster here, or click to choose" />
           <details class="paste">
             <summary>…or paste from a spreadsheet</summary>
@@ -153,12 +155,10 @@ export function RosterStep({ table, mapping, roster, settings, onTable, onMappin
         </div>
       </div>
 
-      <WhatToRemove settings={settings} onSettings={onSettings} />
-
       <details class="card settings">
         <summary>
-          <h3>Settings</h3>
-          <span class="muted">School names, extra terms, ID format (remembered on this computer)</span>
+          <h3>More settings</h3>
+          <span class="muted">School names, extra terms to remove, ID format (remembered on this computer)</span>
         </summary>
         <div class="grid2">
           <label>
@@ -196,7 +196,7 @@ export function RosterStep({ table, mapping, roster, settings, onTable, onMappin
       </details>
 
       <div class="actions">
-        {!roster.length && <span class="muted">You can continue without a roster, but only headings, metadata and patterns will be found.</span>}
+        {!roster.length && <span class="muted">No roster? That's fine — you'll confirm each writer's name in the next step.</span>}
         <button class="btn primary" onClick={onNext}>
           Next: add essays →
         </button>
@@ -217,8 +217,7 @@ export function WhatToRemove({ settings, onSettings }: { settings: Settings; onS
         <div>
           <h3>What to remove</h3>
           <p class="muted small">
-            Choose a preset or tick exactly what you want. Anything left unticked stays in the essay but is still highlighted in Review, so you can remove it
-            case by case. Remembered on this computer.
+            Only what is ticked is removed; everything else (citations, authors you quote, your title) is left exactly as written. Remembered on this computer.
           </p>
         </div>
         <div class="seg presets" role="group" aria-label="Presets">
@@ -254,11 +253,11 @@ export function WhatToRemove({ settings, onSettings }: { settings: Settings; onS
           </span>
         </label>
       </div>
-      {!settings.remove.studentName && <p class="warn-text small">The student's name will not be removed — the essays will not be anonymous.</p>}
-      {settings.remove.studentName && !settings.remove.email && <p class="warn-text small">Heads-up: email addresses usually contain the student's name.</p>}
+      {!settings.remove.studentName && <p class="warn-text small">The writer's name will not be removed — the essays will not be anonymous.</p>}
       <p class="muted small">
-        Always removed, whatever you choose: names hidden in the file itself (document properties, comment and tracked-change authors, the thumbnail),
-        plus any custom terms from Settings and anything you remove by hand.
+        Always removed, whatever you choose: names hidden inside the file (document properties, comment and tracked-change authors, the thumbnail),
+        plus any custom terms from Settings and anything you remove by hand in Review. Emails often contain the writer's name — tick “Email addresses”
+        if your essays include one.
       </p>
     </div>
   );

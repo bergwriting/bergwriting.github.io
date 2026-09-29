@@ -6,3 +6,4 @@ export function okaforDocx(): Promise<Uint8Array>;
 export function martinezDocx(): Promise<Uint8Array>;
 export function youngPdf(): Promise<Uint8Array>;
 export function scannedPdf(): Promise<Uint8Array>;
+export function adeyemiDocx(): Promise<Uint8Array>;

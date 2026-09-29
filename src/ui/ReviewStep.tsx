@@ -3,7 +3,10 @@ import type { Block, Category, RosterEntry, Settings, Span } from '../core/types
 import { CATEGORY_LABEL } from '../core/types';
 import { replacementFor } from '../core/replace';
 import { findFolded, fold, foldString, phraseSource, uid, wordRegex } from '../core/text';
-import type { EssayItem } from './state';
+import { redetect, studentFor, type EssayItem } from './state';
+import { WriterField } from './WriterField';
+import { Autocomplete } from './Autocomplete';
+import { namesInEssay } from '../detect/writer';
 import { plural } from './util';
 
 interface Props {
@@ -17,7 +20,7 @@ interface Props {
   onDone: () => void;
 }
 
-export function ReviewStep({ items, roster, labels, selected, onSelect, updateItem, onDone }: Props) {
+export function ReviewStep({ items, roster, settings, labels, selected, onSelect, updateItem, onDone }: Props) {
   const current = items.find((i) => i.key === selected) ?? items[0];
   if (!current) {
     return (
@@ -37,13 +40,13 @@ export function ReviewStep({ items, roster, labels, selected, onSelect, updateIt
     <section class="review">
       <aside class="essay-list" aria-label="Essays">
         {items.map((it) => {
-          const st = roster.find((r) => r.id === it.entryId);
+          const st = studentFor(it, roster);
           const red = it.spans.filter((s) => s.action === 'redact').length;
           const flg = it.spans.filter((s) => s.action === 'flag').length;
           return (
             <button key={it.key} class={`essay-item ${it.key === current.key ? 'active' : ''}`} onClick={() => onSelect(it.key)}>
               <span class="code">{labels.get(it.key)}</span>
-              <span class="who">{st?.name ?? <i>no student matched</i>}</span>
+              <span class="who">{st?.name ?? <i class="warn-text">writer's name missing</i>}</span>
               <span class="fname muted">{it.fileName}</span>
               <span class="stats">
                 <span class="n red" title="to be removed">
@@ -62,7 +65,9 @@ export function ReviewStep({ items, roster, labels, selected, onSelect, updateIt
         key={current.key}
         item={current}
         label={labels.get(current.key) ?? current.code}
-        student={roster.find((r) => r.id === current.entryId)}
+        student={studentFor(current, roster)}
+        roster={roster}
+        settings={settings}
         updateItem={updateItem}
         onNext={next}
       />
@@ -79,7 +84,23 @@ interface Selection {
 
 const MANUAL_CATEGORIES: Category[] = ['MANUAL', 'STUDENT', 'INSTRUCTOR', 'PERSON', 'COURSE', 'SCHOOL', 'ID'];
 
-function EssayReview({ item, label, student, updateItem, onNext }: { item: EssayItem; label: string; student?: RosterEntry; updateItem: Props['updateItem']; onNext: () => void }) {
+function EssayReview({
+  item,
+  label,
+  student,
+  roster,
+  settings,
+  updateItem,
+  onNext,
+}: {
+  item: EssayItem;
+  label: string;
+  student?: RosterEntry;
+  roster: RosterEntry[];
+  settings: Settings;
+  updateItem: Props['updateItem'];
+  onNext: () => void;
+}) {
   const essay = item.parsed!;
   const [mode, setMode] = useState<'marks' | 'result'>('marks');
   const [sel, setSel] = useState<Selection | null>(null);
@@ -140,24 +161,34 @@ function EssayReview({ item, label, student, updateItem, onNext }: { item: Essay
     return () => document.removeEventListener('selectionchange', onSel);
   }, [essay, mode]);
 
-  const addManual = () => {
-    if (!sel) return;
+  /** Remove `text` (at the selection, and optionally everywhere in this essay). */
+  const removeText = (text: string, category: Category, all: boolean, at?: Selection) => {
     const targets: { blockId: string; start: number; end: number }[] = [];
-    if (everywhere) {
-      const re = wordRegex(phraseSource(foldString(sel.text)));
+    if (all && text.trim()) {
+      const re = wordRegex(phraseSource(foldString(text.trim())));
       for (const b of essay.blocks) for (const m of findFolded(fold(b.text), re)) targets.push({ blockId: b.id, ...m });
     }
-    if (!targets.some((t) => t.blockId === sel.blockId && t.start === sel.start)) targets.push(sel);
+    if (at && !targets.some((t) => t.blockId === at.blockId && t.start === at.start)) targets.push(at);
+    if (!targets.length) return 0;
     setSpans((spans) => {
       const kept = spans.filter((s) => !targets.some((t) => t.blockId === s.blockId && t.start < s.end && t.end > s.start));
       return [
         ...kept,
-        ...targets.map((t) => ({ id: uid(), blockId: t.blockId, start: t.start, end: t.end, category: cat, action: 'redact' as const, source: 'manual', label: 'Added by you', userSet: true })),
+        ...targets.map((t) => ({ id: uid(), blockId: t.blockId, start: t.start, end: t.end, category, action: 'redact' as const, source: 'manual', label: 'Added by you', userSet: true })),
       ];
     });
+    return targets.length;
+  };
+
+  const addManual = () => {
+    if (!sel) return;
+    removeText(sel.text, cat, everywhere, sel);
     document.getSelection()?.removeAllRanges();
     setSel(null);
   };
+
+  const mentioned = useMemo(() => namesInEssay(essay, 60).map((n) => ({ value: n, hint: 'in this essay' })), [essay]);
+  const [extraMsg, setExtraMsg] = useState('');
 
   const groups: { title: string; note?: string; blocks: Block[] }[] = [
     { title: 'Essay', blocks: essay.blocks.filter((b) => (b.kind === 'body' || b.kind === 'textbox') && b.text.trim()) },
@@ -179,17 +210,17 @@ function EssayReview({ item, label, student, updateItem, onNext }: { item: Essay
           <h2>
             {item.fileName} <span class="arrow">→</span> <span class="code big">{label}</span>
           </h2>
-          <p class="muted">
-            {student ? (
-              <>
-                Student: <b>{student.name}</b>
-                {student.instructor && <> · Instructor: {student.instructor}</>}
-                {student.course && <> · {student.course}</>}
-              </>
-            ) : (
-              <span class="warn-text">Not matched to a roster student — only the heading, document properties and patterns were used. Check carefully.</span>
+          <div class="review-writer">
+            <span class="muted small">Writer's name (removed everywhere)</span>
+            <WriterField item={item} roster={roster} onChange={(n) => updateItem(item.key, () => ({ ...n, spans: redetect(n, roster, settings) }))} />
+            {student && (student.instructor || student.course) && (
+              <p class="muted small">
+                {student.instructor && <>Instructor: {student.instructor}</>}
+                {student.instructor && student.course && ' · '}
+                {student.course}
+              </p>
             )}
-          </p>
+          </div>
           {essay.warnings.length > 0 && (
             <ul class="warnings">
               {essay.warnings.map((w) => (
@@ -215,7 +246,24 @@ function EssayReview({ item, label, student, updateItem, onNext }: { item: Essay
         <span class="legend">
           <span class="mk redact">removed</span> {red} · <span class="mk flag">kept (check)</span> {flg}
         </span>
-        <span class="hint muted">Click a highlight to switch it (all identical text); Alt-click for just one. Select text to remove something that was missed.</span>
+        <span class="hint muted">Click a highlight to switch it (all identical text); Alt-click for just one. Or select text in the essay to remove it.</span>
+        <div class="also-remove">
+          <span class="muted small">Also remove a name or word everywhere in this essay:</span>
+          <Autocomplete
+            ariaLabel="Also remove a name or word"
+            value=""
+            placeholder="Start typing, or tap for names found in the essay…"
+            suggestions={mentioned}
+            commitOnBlur={false}
+            clearOnCommit
+            onCommit={(t) => {
+              if (!t) return;
+              const n = removeText(t, 'MANUAL', true);
+              setExtraMsg(n ? `Removed “${t}” (${plural(n, 'place')}).` : `“${t}” was not found in this essay.`);
+            }}
+          />
+          {extraMsg && <span class="muted small">{extraMsg}</span>}
+        </div>
         <div class={`manual ${sel ? 'show' : ''}`}>
           <button class="btn danger small" disabled={!sel} onClick={addManual}>
             Remove selected text{sel ? ` “${sel.text.length > 24 ? sel.text.slice(0, 24) + '…' : sel.text}”` : ''}

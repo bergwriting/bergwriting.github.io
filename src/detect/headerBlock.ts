@@ -3,7 +3,7 @@ import type { Block, Category, Span } from '../core/types';
 import { uid, wordCount } from '../core/text';
 import { DATE_LINE } from './patterns';
 
-interface Line {
+export interface Line {
   block: Block;
   start: number;
   end: number;
@@ -19,10 +19,10 @@ const LABELS: [RegExp, Category][] = [
   [/^(?:student\s+)?(?:id|number)\s*[:\-–#]/i, 'ID'],
   [/^(?:e-?mail)\s*[:\-–]/i, 'EMAIL'],
 ];
-const HONORIFIC_LINE = /^(?:professor|prof\.|dr\.?|mr\.?|mrs\.?|ms\.?|mx\.?|dean)\s+\p{Lu}/iu;
+export const HONORIFIC_LINE = /^(?:professor|prof\.|dr\.?|mr\.?|mrs\.?|ms\.?|mx\.?|dean)\s+\p{Lu}/iu;
 
 /** The first short lines of the essay body (MLA/APA heading) before running text starts. */
-function headerLines(blocks: Block[]): Line[] {
+export function headerLines(blocks: Block[]): Line[] {
   const out: Line[] = [];
   let seenBlocks = 0;
   for (const b of blocks) {

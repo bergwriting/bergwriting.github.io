@@ -7,16 +7,16 @@ import { pdfToDocx } from './formats/pdfOut';
 import { verifyDocx, type LeakHit } from './verify';
 
 export async function parseEssay(fileName: string, bytes: Uint8Array): Promise<ParsedEssay> {
-  const base: ParsedEssay = { fileName, format: 'docx', blocks: [], metaNames: [], warnings: [], bytes };
+  const base: ParsedEssay = { fileName, format: 'docx', blocks: [], metaNames: [], authorNames: [], warnings: [], bytes };
   const ext = (fileName.match(/\.([a-z0-9]+)$/i)?.[1] ?? '').toLowerCase();
   try {
     if (ext === 'docx') {
       const m = await loadDocx(bytes);
-      return { ...base, blocks: docxBlocks(m), metaNames: m.metaNames, warnings: m.warnings };
+      return { ...base, blocks: docxBlocks(m), metaNames: m.metaNames, authorNames: m.authorNames, warnings: m.warnings };
     }
     if (ext === 'pdf') {
       const m = await loadPdf(bytes);
-      return { ...base, format: 'pdf', blocks: m.paras.map((p) => p.block), metaNames: m.metaNames, warnings: m.warnings };
+      return { ...base, format: 'pdf', blocks: m.paras.map((p) => p.block), metaNames: m.metaNames, authorNames: m.metaNames, warnings: m.warnings };
     }
     if (ext === 'doc') return { ...base, fatal: 'Old Word format (.doc). Open it in Word and use File › Save As › .docx, then add it again.' };
     if (ext === 'pages') return { ...base, fatal: 'Apple Pages file. Use File › Export To › Word (.docx) in Pages, then add it again.' };

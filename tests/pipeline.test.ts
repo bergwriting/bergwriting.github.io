@@ -4,11 +4,14 @@ import { allFixtures, FORBIDDEN, REQUIRED, ROSTER_CSV } from './fixtures/make-fi
 import { parseEssay, exportEssay } from '../src/pipeline';
 import { buildRoster, guessMapping, matchEssay, parseRosterText } from '../src/core/roster';
 import { detectAll } from '../src/detect';
+import { autoWriter, guessWriter } from '../src/detect/writer';
 import { DEFAULT_SETTINGS, type RosterEntry, type Settings } from '../src/core/types';
 import { docxAllText } from '../src/formats/docx';
 import { foldString } from '../src/core/text';
 
-const settings: Settings = { ...DEFAULT_SETTINGS, institutions: 'Muhlenberg College\nMuhlenberg' };
+const ALL = Object.fromEntries(Object.keys(DEFAULT_SETTINGS.remove).map((k) => [k, true])) as Settings['remove'];
+/** The "Everything" preset, with other names highlighted. */
+const settings: Settings = { ...DEFAULT_SETTINGS, remove: ALL, flagOtherNames: true, institutions: 'Muhlenberg College\nMuhlenberg' };
 
 let fixtures: Record<string, Uint8Array>;
 let roster: RosterEntry[];
@@ -42,7 +45,7 @@ describe('roster', () => {
   });
 });
 
-describe.each(Object.keys(FORBIDDEN))('anonymizing %s', (name) => {
+describe.each(Object.keys(FORBIDDEN))('"Everything" preset: anonymizing %s', (name) => {
   let r: Awaited<ReturnType<typeof run>>;
   beforeAll(async () => {
     r = await run(name);
@@ -118,7 +121,7 @@ describe('without a roster match', () => {
   };
   it.each(Object.keys(STUDENT_NAMES))('still removes the author name from %s (heading, metadata, page header)', async (name) => {
     const essay = await parseEssay(name, fixtures[name]);
-    const spans = detectAll(essay, { student: undefined, others: [], settings: DEFAULT_SETTINGS });
+    const spans = detectAll(essay, { student: undefined, others: [], settings });
     const out = await exportEssay(essay, spans, 'WP-TEST', undefined);
     const folded = foldString(await allText(out.bytes));
     for (const bad of STUDENT_NAMES[name]) expect(folded.includes(foldString(bad)), bad).toBe(false);
@@ -140,7 +143,43 @@ describe('"Names only" preset', () => {
     for (const bad of ['Okafor', 'Amara', 'Daniel Reyes', 'Priya Shah']) expect(outsideEmail).not.toContain(foldString(bad));
     for (const kept of ['amara.okafor@example.edu', 'ENG 101-03', '12 October 2025', '555-0142', 'Muhlenberg College']) expect(text).toContain(kept);
     expect(out.hits.filter((h) => !h.allowed)).toEqual([]);
-    // switched-off kinds are still highlighted for the reviewer
-    expect(spans.some((sp) => sp.category === 'EMAIL' && sp.action === 'flag')).toBe(true);
+    // switched-off kinds are left completely alone
+    expect(spans.some((sp) => sp.category === 'EMAIL')).toBe(false);
+  });
+});
+
+describe("default: writer's name only, no roster", () => {
+  const run = async (name: string) => {
+    const essay = await parseEssay(name, fixtures[name]);
+    const guess = autoWriter(guessWriter(essay));
+    const student = guess ? { id: 'w', name: guess.name, otherNames: [] } : undefined;
+    const spans = detectAll(essay, { student, others: [], settings: DEFAULT_SETTINGS });
+    const out = await exportEssay(essay, spans, 'WP-TEST', student, DEFAULT_SETTINGS.remove);
+    return { guess, spans, essay, text: await allText(out.bytes), hits: out.hits };
+  };
+
+  it('finds a name the name lexicon does not know, on the first line above the title', async () => {
+    const r = await run('Personal Essay - final.docx');
+    expect(r.guess?.name).toBe('Oluwaseun Adeyemi');
+    for (const bad of ['Oluwaseun', 'Adeyemi']) expect(r.text).not.toContain(bad);
+    expect(r.text).toContain('Essay WP-TEST');
+    expect(r.text).toContain('The [STUDENT] stall');
+    expect(r.hits.filter((h) => !h.allowed)).toEqual([]);
+  });
+
+  it('leaves everything else alone: cited authors, citations, professor, title', async () => {
+    const r = await run('Personal Essay - final.docx');
+    for (const kept of ['Chinua Achebe', 'Things Fall Apart', 'Professor Lindqvist', '(Lindqvist 12)', 'Adichie', 'The Market at Dawn']) expect(r.text).toContain(kept);
+    expect(r.spans.every((s) => s.category === 'STUDENT' || s.category === 'PERSON')).toBe(true);
+    expect(r.spans.some((s) => s.action === 'flag')).toBe(false);
+  });
+
+  it.each(['Okafor_Essay_Final.docx', 'Martinez-Ruiz WRT201.docx', 'young_reading_the_river.pdf'])('guesses the writer of %s from the file itself', async (name) => {
+    const expected = { 'Okafor_Essay_Final.docx': 'Amara Okafor', 'Martinez-Ruiz WRT201.docx': 'José Martínez-Ruiz', 'young_reading_the_river.pdf': 'Grace Young' }[name];
+    const r = await run(name);
+    expect(r.guess?.name).toBe(expected);
+    // only the writer is removed: the instructor and course stay
+    expect(r.text).not.toContain(expected);
+    expect(r.text).toMatch(/Professor|Dr\./);
   });
 });

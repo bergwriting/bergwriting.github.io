@@ -90,6 +90,7 @@ export interface DocxModel {
   docs: Map<string, XNode>;
   paras: Para[];
   metaNames: string[];
+  authorNames: string[];
   warnings: string[];
 }
 
@@ -222,8 +223,9 @@ function buildParas(doc: XNode, path: string): Para[] {
   return out;
 }
 
-async function collectMeta(zip: JSZip, docs: Map<string, XNode>): Promise<string[]> {
+async function collectMeta(zip: JSZip, docs: Map<string, XNode>): Promise<{ all: string[]; authors: string[] }> {
   const names = new Set<string>();
+  const authors = new Set<string>();
   const addText = (s: string | null | undefined) => {
     const t = (s ?? '').trim();
     if (t) names.add(t);
@@ -231,7 +233,11 @@ async function collectMeta(zip: JSZip, docs: Map<string, XNode>): Promise<string
   const core = await zip.file('docProps/core.xml')?.async('string');
   if (core) {
     const d = parseXml(core);
-    for (const e of allElements(d)) if (['creator', 'lastModifiedBy'].includes(e.localName)) addText(getText(e));
+    for (const e of allElements(d)) {
+      if (!['creator', 'lastModifiedBy'].includes(e.localName)) continue;
+      addText(getText(e));
+      if (getText(e).trim()) authors.add(getText(e).trim());
+    }
   }
   const app = await zip.file('docProps/app.xml')?.async('string');
   if (app) {
@@ -248,7 +254,7 @@ async function collectMeta(zip: JSZip, docs: Map<string, XNode>): Promise<string
     }
   }
   for (const d of docs.values()) for (const e of allElements(d)) addText(e.getAttributeNS(W, 'author'));
-  return [...names];
+  return { all: [...names], authors: [...authors] };
 }
 
 export async function loadDocx(bytes: Uint8Array): Promise<DocxModel> {
@@ -272,7 +278,7 @@ export async function loadDocx(bytes: Uint8Array): Promise<DocxModel> {
   for (const p of paths) raw.set(p, parseXml(await zip.file(p)!.async('string')));
 
   // Metadata (and revision authors) must be read before tracked changes are accepted.
-  const metaNames = await collectMeta(zip, raw);
+  const { all: metaNames, authors: authorNames } = await collectMeta(zip, raw);
   if (Object.keys(zip.files).some((p) => /^word\/comments\.xml$/.test(p))) warnings.push('Had comments (removed).');
   if ([...raw.values()].some((d) => els(d, 'ins').length || els(d, 'del').length)) warnings.push('Had tracked changes (accepted).');
   if (Object.keys(zip.files).some((p) => /^word\/media\//.test(p))) warnings.push('Contains images: check they do not show the student (photo, name in a screenshot).');
@@ -283,7 +289,7 @@ export async function loadDocx(bytes: Uint8Array): Promise<DocxModel> {
     preprocess(d);
     paras.push(...buildParas(d, p));
   }
-  return { zip, docs: raw, paras, metaNames, warnings };
+  return { zip, docs: raw, paras, metaNames, authorNames, warnings };
 }
 
 export function docxBlocks(m: DocxModel): Block[] {

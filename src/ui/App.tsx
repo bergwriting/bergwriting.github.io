@@ -3,7 +3,7 @@ import { DEFAULT_SETTINGS, completeSettings, type RosterEntry, type Settings } f
 import { essayLabels } from '../naming';
 import { buildRoster, matchEssay, type ColumnMapping, type RosterTable } from '../core/roster';
 import { loadJson, saveJson } from './util';
-import { CHOSEN_BY_YOU, redetect, type EssayItem } from './state';
+import { CHOSEN_BY_YOU, assignWriter, redetect, type EssayItem } from './state';
 import { RosterStep } from './RosterStep';
 import { FilesStep } from './FilesStep';
 import { ReviewStep } from './ReviewStep';
@@ -13,7 +13,7 @@ import { DecryptTab } from './DecryptTab';
 type Tab = 'roster' | 'files' | 'review' | 'export' | 'key';
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: 'roster', label: '1 · Roster' },
+  { id: 'roster', label: '1 · Settings' },
   { id: 'files', label: '2 · Essays' },
   { id: 'review', label: '3 · Review' },
   { id: 'export', label: '4 · Export' },
@@ -54,7 +54,7 @@ export function App() {
           let next = it;
           if (it.match?.reason !== CHOSEN_BY_YOU) {
             const match = matchEssay(it.parsed, roster);
-            next = { ...it, match, entryId: match.entryId };
+            next = assignWriter({ ...it, match, entryId: match.entryId });
           }
           return { ...next, spans: redetect(next, roster, settings), result: undefined };
         }),

@@ -5,7 +5,7 @@ import { fileNameFor, fillDate, namesInFileName, sanitizeFileName, uniqueNames }
 import { CATEGORY_LABEL } from '../core/types';
 import { exportEssay } from '../pipeline';
 import { canEncrypt, encryptText, keyCsv, type KeyRow } from '../key';
-import type { EssayItem } from './state';
+import { studentFor, type EssayItem } from './state';
 import { download, plural, today } from './util';
 
 interface Props {
@@ -62,7 +62,7 @@ export function ExportStep({ items, roster, settings, labels, onSettings, update
     for (const it of ready) {
       const label = labelOf(it);
       try {
-        const student = roster.find((r) => r.id === it.entryId);
+        const student = studentFor(it, roster);
         const res = await exportEssay(it.parsed!, it.spans, label, student, settings.remove);
         updateItem(it.key, (x) => ({ ...x, result: { bytes: res.bytes, hits: res.hits, override: false, label } }));
       } catch (e) {
@@ -76,7 +76,7 @@ export function ExportStep({ items, roster, settings, labels, onSettings, update
   const keyRows = (): KeyRow[] => {
     const rows: KeyRow[] = [];
     for (const it of items) {
-      const st = roster.find((r) => r.id === it.entryId);
+      const st = studentFor(it, roster);
       const inZip = included.includes(it);
       const redactions = it.parsed
         ? it.spans

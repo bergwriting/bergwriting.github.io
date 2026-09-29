@@ -320,12 +320,45 @@ export async function scannedPdf() {
   return pdf.save();
 }
 
+// ---------------------------------------------------------------- docx 3: like a Google Docs export, no roster needed
+
+/** Name on the first line, then a title; no author in the file properties; a first name the lexicon doesn't know. */
+export async function adeyemiDocx() {
+  const doc = new Document({
+    creator: ' ',
+    lastModifiedBy: ' ',
+    sections: [
+      {
+        children: [
+          new Paragraph({ children: [new TextRun('Oluwaseun Adeyemi')] }),
+          new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun('The Market at Dawn')] }),
+          new Paragraph({
+            indent: { firstLine: 720 },
+            children: [
+              new TextRun('Every Saturday my grandmother woke me before the call to prayer and said, "Oluwaseun, the tomatoes will not wait." '),
+              new TextRun('I read '),
+              new TextRun({ text: 'Things Fall Apart', italics: true }),
+              new TextRun(' by Chinua Achebe the summer I turned twelve, and I recognised the market women in it, loud and exact. The Adeyemi stall sold peppers, and I learned to count in three languages before I could spell my own name.'),
+            ],
+          }),
+          new Paragraph({
+            indent: { firstLine: 720 },
+            children: [new TextRun('Professor Lindqvist told our seminar that every essay is an argument about what deserves attention (Lindqvist 12). Mine argues for the market. As Adichie warns, a single story is dangerous; a market is a thousand stories shouting at once.')],
+          }),
+        ],
+      },
+    ],
+  });
+  return new Uint8Array(await Packer.toArrayBuffer(doc));
+}
+
 export async function allFixtures() {
   return {
     'Okafor_Essay_Final.docx': await okaforDocx(),
     'Martinez-Ruiz WRT201.docx': await martinezDocx(),
     'young_reading_the_river.pdf': await youngPdf(),
     'nguyen_scan.pdf': await scannedPdf(),
+    'Personal Essay - final.docx': await adeyemiDocx(),
   };
 }
 

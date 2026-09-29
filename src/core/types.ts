@@ -66,18 +66,22 @@ export interface Settings {
   remove: Record<RemoveKey, boolean>;
   /** How essays are labelled inside the document and named on disk. */
   naming: Naming;
+  /** Settings format version (for upgrading saved settings). */
+  version?: number;
 }
+
+export const SETTINGS_VERSION = 2;
 
 /** The kinds of identifying detail a committee can choose to remove. */
 export type RemoveKey = 'studentName' | 'instructor' | 'classmates' | 'course' | 'school' | 'email' | 'phone' | 'ids' | 'links' | 'dates';
 
 export const REMOVE_OPTIONS: { key: RemoveKey; label: string; hint: string }[] = [
-  { key: 'studentName', label: "Student's name", hint: 'Every form: full, first, last, initials, preferred name; also names hidden in the file' },
+  { key: 'studentName', label: "Writer's name", hint: 'Every form: full, first, last, initials, nickname; always recommended' },
   { key: 'instructor', label: 'Instructor / professor', hint: 'From the roster, and "Professor X" anywhere' },
   { key: 'classmates', label: 'Other students on the roster', hint: 'Classmates, roommates, co-authors named in the essay' },
   { key: 'course', label: 'Course and section', hint: 'e.g. ENG 101-03' },
   { key: 'school', label: 'School / college name', hint: 'Names listed under Settings' },
-  { key: 'email', label: 'Email addresses', hint: 'Often contain the student\'s name' },
+  { key: 'email', label: 'Email addresses', hint: 'Often contain the writer\'s name' },
   { key: 'phone', label: 'Phone numbers', hint: '' },
   { key: 'ids', label: 'Student ID numbers', hint: 'Format set under Settings' },
   { key: 'links', label: 'Personal links', hint: 'Shared Google Docs, LinkedIn, social media (cited sources are always kept)' },
@@ -85,9 +89,10 @@ export const REMOVE_OPTIONS: { key: RemoveKey; label: string; hint: string }[] =
 ];
 
 export const REMOVE_PRESETS: { id: string; label: string; keys: RemoveKey[] }[] = [
-  { id: 'all', label: 'Everything (recommended)', keys: REMOVE_OPTIONS.map((o) => o.key) },
-  { id: 'names', label: 'Names only', keys: ['studentName', 'instructor', 'classmates'] },
+  { id: 'writer', label: "Writer's name only", keys: ['studentName'] },
+  { id: 'names', label: 'All names (writer, instructor, classmates)', keys: ['studentName', 'instructor', 'classmates'] },
   { id: 'contact', label: 'Names + contact details', keys: ['studentName', 'instructor', 'classmates', 'email', 'phone', 'ids', 'links'] },
+  { id: 'all', label: 'Everything', keys: REMOVE_OPTIONS.map((o) => o.key) },
 ];
 
 export interface Naming {
@@ -116,18 +121,23 @@ export const DEFAULT_SETTINGS: Settings = {
   extraTerms: '',
   idPattern: String.raw`\b\d{7,9}\b`,
   coursePrefixes: 'ENG, ENGL, WRT, WRI, WRIT, WRTG, FYS, FYW, FYWS, RHET, COMP, CW, LIT',
-  flagOtherNames: true,
-  remove: Object.fromEntries(REMOVE_OPTIONS.map((o) => [o.key, true])) as Record<RemoveKey, boolean>,
+  flagOtherNames: false,
+  remove: Object.fromEntries(REMOVE_OPTIONS.map((o) => [o.key, o.key === 'studentName'])) as Record<RemoveKey, boolean>,
   naming: DEFAULT_NAMING,
+  version: SETTINGS_VERSION,
 };
 
 /** Fill in any options missing from settings saved by an older version. */
 export function completeSettings(s: Partial<Settings>): Settings {
+  // Version 1 removed everything by default; version 2 defaults to the writer's name only.
+  const old = (s.version ?? 1) < 2;
   return {
     ...DEFAULT_SETTINGS,
     ...s,
-    remove: { ...DEFAULT_SETTINGS.remove, ...(s.remove ?? {}) },
+    flagOtherNames: old ? DEFAULT_SETTINGS.flagOtherNames : (s.flagOtherNames ?? DEFAULT_SETTINGS.flagOtherNames),
+    remove: old ? { ...DEFAULT_SETTINGS.remove } : { ...DEFAULT_SETTINGS.remove, ...(s.remove ?? {}) },
     naming: { ...DEFAULT_NAMING, ...(s.naming ?? {}) },
+    version: SETTINGS_VERSION,
   };
 }
 
@@ -137,6 +147,8 @@ export interface ParsedEssay {
   blocks: Block[];
   /** Names found in document properties, comment and revision authors, PDF /Author. */
   metaNames: string[];
+  /** Just the document's author fields (Word creator / last modified by, PDF Author): likely the writer. */
+  authorNames: string[];
   warnings: string[];
   /** Non-recoverable problem (e.g. scanned PDF with no text). */
   fatal?: string;

@@ -789,3 +789,66 @@ tr.error td {
 .fname-input + small {
   display: block;
 }
+
+/* autocomplete */
+.ac {
+  position: relative;
+  width: 100%;
+}
+.ac-list {
+  position: absolute;
+  z-index: 20;
+  left: 0;
+  right: 0;
+  top: calc(100% + 3px);
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.14);
+  max-height: 280px;
+  overflow-y: auto;
+  min-width: 260px;
+}
+.ac-list li {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 9px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.ac-list li.active {
+  background: var(--accent-soft);
+}
+.ac-list li.typed .ac-value {
+  color: var(--accent);
+}
+.ac-hint {
+  font-size: 0.75rem;
+  color: var(--ink-2);
+}
+.writer-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 260px;
+  max-width: 460px;
+}
+.writer-field .badge {
+  align-self: flex-start;
+}
+.review-writer {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+.also-remove {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  max-width: 520px;
+}

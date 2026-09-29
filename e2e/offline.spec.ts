@@ -35,10 +35,12 @@ test('full workflow offline', async ({ page, context }) => {
   await page.goto(APP);
   await expect(page.getByRole('heading', { name: 'Essay Anonymizer' })).toBeVisible();
 
-  // 1. roster + settings
+  // 1. roster + settings: this test uses the "Everything" preset with other names highlighted
+  await page.getByRole('button', { name: 'Everything', exact: true }).click();
+  await page.getByRole('checkbox', { name: /Highlight other people's names/ }).check();
   await page.locator('input[type=file]').first().setInputFiles(join(FX, 'roster.csv'));
   await expect(page.getByText('5 students loaded.')).toBeVisible();
-  await page.getByText('Settings', { exact: true }).click();
+  await page.getByText('More settings', { exact: true }).click();
   await page.getByPlaceholder('Muhlenberg College').fill('Muhlenberg College\nMuhlenberg');
   await page.screenshot({ path: join(SHOTS, '1-roster.png'), fullPage: true });
   await page.getByRole('button', { name: 'Next: add essays →' }).click();
@@ -51,6 +53,7 @@ test('full workflow offline', async ({ page, context }) => {
   await expect(page.getByText('Reading…')).toHaveCount(0, { timeout: 30_000 });
   await expect(page.getByText(/no selectable text/)).toBeVisible();
   await expect(page.locator('.badge.high')).toHaveCount(3);
+  await expect(page.getByRole('combobox', { name: /Writer's name for Okafor/ })).toHaveValue('Amara Okafor');
   await page.screenshot({ path: join(SHOTS, '2-files.png'), fullPage: true });
   await page.getByRole('button', { name: 'Next: review →' }).click();
 
@@ -151,25 +154,27 @@ test('essays added before the roster are matched once the roster loads', async (
   await page.locator('input[type=file]').first().setInputFiles([join(FX, 'Okafor_Essay_Final.docx'), join(FX, 'young_reading_the_river.pdf')]);
   await expect(page.getByText('Reading…')).toHaveCount(0, { timeout: 30_000 });
   await expect(page.locator('.badge.high')).toHaveCount(0);
-  await page.getByRole('tab', { name: /Roster/ }).click();
+  await page.getByRole('tab', { name: /Settings/ }).click();
   await page.locator('input[type=file]').first().setInputFiles(join(FX, 'roster.csv'));
   await page.getByRole('tab', { name: /Essays/ }).click();
   await expect(page.locator('.badge.high')).toHaveCount(2);
+  await expect(page.getByText(/Roster · /)).toHaveCount(2);
 });
 
 test('choose what to remove and how files are named', async ({ page }) => {
   await page.goto(APP);
   await page.locator('input[type=file]').first().setInputFiles(join(FX, 'roster.csv'));
-  await page.getByRole('button', { name: 'Names only' }).click();
+  await page.getByRole('button', { name: /All names/ }).click();
   await expect(page.getByRole('checkbox', { name: /Email addresses/ })).not.toBeChecked();
-  await expect(page.getByRole('checkbox', { name: /Student's name/ })).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: /Writer's name/ })).toBeChecked();
   await page.screenshot({ path: join(SHOTS, '6-what-to-remove.png'), fullPage: true });
   await page.getByRole('button', { name: 'Next: add essays →' }).click();
   await page.locator('input[type=file]').first().setInputFiles([join(FX, 'Okafor_Essay_Final.docx'), join(FX, 'young_reading_the_river.pdf')]);
   await expect(page.getByText('Reading…')).toHaveCount(0, { timeout: 30_000 });
   await page.getByRole('button', { name: 'Next: review →' }).click();
-  // the email is kept but still highlighted
-  await expect(page.locator('mark.flag', { hasText: 'amara.okafor@example.edu' })).toBeVisible();
+  // the email is left alone (not removed, not highlighted)
+  await expect(page.locator('.doc')).toContainText('amara.okafor@example.edu');
+  await expect(page.locator('mark', { hasText: 'amara.okafor@example.edu' })).toHaveCount(0);
   await page.getByRole('tab', { name: /Export/ }).click();
 
   await page.getByRole('radio', { name: /Number/ }).check();
@@ -204,4 +209,55 @@ test('choose what to remove and how files are named', async ({ page }) => {
   expect(all).not.toContain('Essay Essay');
   expect(all).toContain('amara.okafor@example.edu');
   expect(all).not.toMatch(/Amara Okafor|Grace Young/);
+});
+
+test("default: only the writer's name, with autocomplete (no roster)", async ({ page }) => {
+  await page.goto(APP);
+  await expect(page.getByRole('button', { name: "Writer's name only" })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Next: add essays →' }).click();
+  await page.locator('input[type=file]').first().setInputFiles([join(FX, 'Personal Essay - final.docx')]);
+  await expect(page.getByText('Reading…')).toHaveCount(0, { timeout: 30_000 });
+
+  // filled in from the first line of the essay, and flagged for a quick check
+  const writer = page.getByRole('combobox', { name: /Writer's name for Personal Essay/ });
+  await expect(writer).toHaveValue('Oluwaseun Adeyemi');
+  await expect(page.getByText(/Found: first line, above the title/)).toBeVisible();
+
+  // tapping the box shows suggestions; typing filters them
+  await writer.click();
+  await expect(page.getByRole('option').first()).toContainText('Oluwaseun Adeyemi');
+  await writer.fill('');
+  await writer.pressSequentially('Oluw');
+  await expect(page.getByRole('option', { name: /Oluwaseun Adeyemi/ })).toBeVisible();
+  await page.screenshot({ path: join(SHOTS, '8-writer-autocomplete.png'), fullPage: true });
+  await page.getByRole('option', { name: /Oluwaseun Adeyemi/ }).click();
+  await expect(writer).toHaveValue('Oluwaseun Adeyemi');
+  await page.getByRole('button', { name: 'Next: review →' }).click();
+
+  // only the writer's name is marked; cited authors and the professor are untouched
+  await expect(page.locator('mark.redact', { hasText: 'Adeyemi' }).first()).toBeVisible();
+  await expect(page.locator('mark', { hasText: 'Chinua Achebe' })).toHaveCount(0);
+  await expect(page.locator('mark', { hasText: 'Lindqvist' })).toHaveCount(0);
+
+  // "also remove" suggests names from the essay
+  const also = page.getByRole('combobox', { name: 'Also remove a name or word' });
+  await also.click();
+  await also.pressSequentially('Lindq');
+  await expect(page.getByRole('option', { name: /Lindqvist/ }).first()).toBeVisible();
+  await page.screenshot({ path: join(SHOTS, '9-also-remove.png'), fullPage: true });
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect(page.getByText(/Removed “Lindqvist”/)).toBeVisible();
+  await expect(page.locator('mark.redact', { hasText: 'Lindqvist' })).toHaveCount(2);
+
+  await page.getByRole('tab', { name: /Export/ }).click();
+  await page.getByRole('button', { name: /Create 1 anonymized file/ }).click();
+  await expect(page.getByText('✓ No identifying text found')).toBeVisible({ timeout: 30_000 });
+  const [zipDl] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: /Download anonymized essays/ }).click()]);
+  const zip = await JSZip.loadAsync(readFileSync(await zipDl.path()));
+  const inner = await JSZip.loadAsync(await zip.file(Object.keys(zip.files)[0])!.async('uint8array'));
+  const xml = await inner.file('word/document.xml')!.async('string');
+  expect(xml).not.toMatch(/Oluwaseun|Adeyemi|Lindqvist/);
+  expect(xml).toContain('Chinua Achebe');
+  expect(xml).toContain('The Market at Dawn');
 });

@@ -11,7 +11,8 @@ import { decryptText, encryptText, keyCsv, uniqueCode } from '../src/key';
 import { DEFAULT_SETTINGS, type Block, type Span } from '../src/core/types';
 import { resolveSpans, applyRemoveChoices } from '../src/detect';
 import { essayLabels, fileNameFor, namesInFileName, sanitizeFileName, uniqueNames } from '../src/naming';
-import { DEFAULT_NAMING } from '../src/core/types';
+import { DEFAULT_NAMING, completeSettings } from '../src/core/types';
+import { autoWriter, guessWriter, nameFromFileName } from '../src/detect/writer';
 
 const block = (text: string, kind: Block['kind'] = 'body', id = 'b1'): Block => ({ id, kind, text });
 const spanText = (b: Block, s: Span) => b.text.slice(s.start, s.end);
@@ -162,17 +163,54 @@ describe('key', () => {
 });
 
 describe('what to remove', () => {
-  const mk = (category: Span['category'], source = 'pattern'): Span => ({ id: category, blockId: 'b', start: 0, end: 1, category, action: 'redact', source, label: 'x' });
-  it('keeps (as highlights) the kinds that are switched off', () => {
-    const remove = { ...DEFAULT_SETTINGS.remove, email: false, dates: false, classmates: false };
-    const out = applyRemoveChoices([mk('STUDENT', 'roster'), mk('EMAIL'), mk('DATE', 'header-block'), mk('STUDENT', 'roster-other'), mk('MANUAL', 'manual')], remove);
-    expect(out.map((s) => `${s.category}:${s.source}:${s.action}`)).toEqual([
-      'STUDENT:roster:redact',
-      'EMAIL:pattern:flag',
-      'DATE:header-block:flag',
-      'STUDENT:roster-other:flag',
-      'MANUAL:manual:redact',
-    ]);
+  const mk = (category: Span['category'], source = 'pattern', action: Span['action'] = 'redact'): Span => ({ id: category + source, blockId: 'b', start: 0, end: 1, category, action, source, label: 'x' });
+  it('drops the kinds that are switched off', () => {
+    const remove = { ...DEFAULT_SETTINGS.remove, studentName: true, email: false, dates: false, classmates: false };
+    const out = applyRemoveChoices(
+      [mk('STUDENT', 'roster'), mk('EMAIL'), mk('DATE', 'header-block'), mk('STUDENT', 'roster-other'), mk('MANUAL', 'manual'), mk('PERSON', 'metadata'), mk('PERSON', 'pattern', 'flag')],
+      { remove, flagOtherNames: false },
+    );
+    expect(out.map((s) => `${s.category}:${s.source}`)).toEqual(['STUDENT:roster', 'MANUAL:manual', 'PERSON:metadata']);
+  });
+  it("defaults to the writer's name only", () => {
+    expect(Object.entries(DEFAULT_SETTINGS.remove).filter(([, v]) => v).map(([k]) => k)).toEqual(['studentName']);
+    expect(DEFAULT_SETTINGS.flagOtherNames).toBe(false);
+  });
+  it('upgrades settings saved by the old version to the new default', () => {
+    const old = { ...DEFAULT_SETTINGS, version: undefined, remove: Object.fromEntries(Object.keys(DEFAULT_SETTINGS.remove).map((k) => [k, true])) } as never;
+    expect(completeSettings(old).remove.email).toBe(false);
+    expect(completeSettings({ ...DEFAULT_SETTINGS, remove: { ...DEFAULT_SETTINGS.remove, email: true } }).remove.email).toBe(true);
+  });
+});
+
+describe('writer guess', () => {
+  const essay = (fileName: string, texts: string[], authorNames: string[] = [], header?: string) => ({
+    fileName,
+    format: 'docx' as const,
+    blocks: [...texts.map((t, i) => block(t, 'body', `p${i}`)), ...(header ? [block(header, 'header', 'h')] : [])],
+    metaNames: authorNames,
+    authorNames,
+    warnings: [],
+    bytes: new Uint8Array(),
+  });
+  const body = 'This first paragraph is long enough to count as the body of the essay, so the heading stops here.';
+  it('name above the title (any name, not only ones in the lexicon)', () => {
+    expect(autoWriter(guessWriter(essay('essay.docx', ['Hamed Yaghoobian', 'Why We Write', body])))?.name).toBe('Hamed Yaghoobian');
+  });
+  it('does not take a title for a name', () => {
+    expect(autoWriter(guessWriter(essay('essay.docx', ['Grace Under Pressure', body])))).toBeNull();
+    expect(autoWriter(guessWriter(essay('essay.docx', ['The Weight of Small Things', body])))).toBeNull();
+  });
+  it('uses "By", the file name, the author field and the page header', () => {
+    expect(autoWriter(guessWriter(essay('x.docx', ['Why We Write', 'by Hamed Yaghoobian', body])))?.name).toBe('Hamed Yaghoobian');
+    expect(autoWriter(guessWriter(essay('Yaghoobian_essay.docx', ['Hamed Yaghoobian', body])))?.name).toBe('Hamed Yaghoobian');
+    expect(autoWriter(guessWriter(essay('x.docx', [body], ['Hamed Yaghoobian'])))?.name).toBe('Hamed Yaghoobian');
+    expect(autoWriter(guessWriter(essay('x.docx', ['Hamed Yaghoobian', body], [], 'Yaghoobian 1')))?.name).toBe('Hamed Yaghoobian');
+  });
+  it('reads names from file names', () => {
+    expect(nameFromFileName('Hamed_Yaghoobian_Essay-final (2).docx')).toBe('Hamed Yaghoobian');
+    expect(nameFromFileName('HamedYaghoobian.pdf')).toBe('Hamed Yaghoobian');
+    expect(nameFromFileName('Final Essay.docx')).toBeNull();
   });
 });
 

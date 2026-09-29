@@ -8,24 +8,21 @@ Anonymizes student essays (.docx and PDF) for blind review by the writing progra
 
 ## Using it
 
-1. **Roster.** Load the submissions spreadsheet as .csv or .xlsx, or paste the rows. Then map the columns: student name (required), and optionally file name, instructor, course, email, and preferred name. The roster is kept only in the open window and is never saved.
-   Under *Settings*, add your school name(s) (for example `Muhlenberg College` and `Muhlenberg`) and any other words to always remove. Settings are remembered on this computer.
-   Under *What to remove*, choose a preset or tick exactly what you want:
-   - **Everything** (recommended): names, instructor, classmates, course, school, email, phone, IDs, personal links and heading dates.
-   - **Names only**: the student, the instructor and other students on the roster.
-   - **Names + contact details**: names plus email, phone, IDs and personal links.
-   - **Custom**: any combination of the checkboxes.
+1. **Settings.** Choose *What to remove*. The default is **the writer's name only**; everything else in the essay (citations, quoted authors, the title, the professor) is left exactly as written. The other presets are optional extras:
+   - **All names:** the writer, the instructor, and other students on the roster.
+   - **Names + contact details:** all names plus email, phone, student IDs and personal links.
+   - **Everything:** also course codes, the school name and heading dates.
+   - **Custom:** tick any combination of the checkboxes.
 
-   Anything you leave unticked stays in the essay but is still highlighted in Review, so you can remove single cases. Names hidden inside the file itself (document properties, comment authors, the thumbnail) are always removed.
-2. **Essays.** Drop in all the .docx and .pdf files. Each one is matched to a roster row by its file name or by the name found inside it; check the matches and fix any that are wrong.
-   - Google Docs: *File › Download › Microsoft Word (.docx)*.
-   - Pages: *File › Export To › Word*.
-   - Old .doc files: open them in Word and *Save As .docx*.
-3. **Review.** Each essay is shown with its highlights:
-   - **Red** means the text will be replaced (`[STUDENT]`, `[INSTRUCTOR]`, `[EMAIL]`, and so on).
-   - **Amber** means the text is kept but worth a glance. These are cited authors, other people's names, and links.
-
-   Click a highlight to switch it. The switch applies to all identical text; Alt-click switches just one. Select any text and press *Remove selected text* to catch something that was missed. *Result* shows exactly what reviewers will see.
+   Names hidden inside the file (document properties, comment authors, the thumbnail) are always removed. A **roster is optional**. If you have a submissions spreadsheet (.csv or .xlsx), load it and each essay is matched to its writer automatically. The roster stays in the open window only and is never saved.
+2. **Essays.** Drop in the .docx and .pdf files.
+   - Each essay has a **Writer's name** box. It is filled in when the tool is confident (for example a name on the first line above the title, a "By …" line, the name in the file name or page header, or the file's author field) and marked *check*.
+   - **Tap the box for suggestions** (likely names found in the file, then roster names, then names mentioned in the essay). Typing filters them, as on a phone keyboard. Add a nickname after a semicolon, e.g. `Hamed Yaghoobian; Hami`.
+   - Google Docs: *File › Download › Microsoft Word (.docx)*. Pages: *File › Export To › Word*. Old .doc files: *Save As .docx*.
+3. **Review.** The writer's name is highlighted in red wherever it appears, in any form (full, first, last, initials, possessive).
+   - Click a highlight to keep that text instead.
+   - To remove anything else, type it in **Also remove…**, which autocompletes from names and words in that essay, or select text in the essay.
+   - *Result* shows exactly what reviewers will see.
 4. **Export.** First choose the labels and file names:
    - **Label style:** a random code (`WP-7K3Q`) or a number (`Essay 01`, `Essay 02`…). Numbers are handed out in random order, never upload or alphabetical order. The label is written into each essay's heading and page header, and you can change or remove the prefix.
    - **File name pattern:** for example `{label}`, or `Writing Award {date} - {label}`. You can also rename any single file in the results table.
@@ -33,9 +30,9 @@ Anonymizes student essays (.docx and PDF) for blind review by the writing progra
 
    If a file or ZIP name you type contains a student's or instructor's name, the download is held until you change it.
 
-   *Create files* then builds a .docx for each essay, then re-opens every file and searches it, including hidden parts, for the student's name, email and everything you removed. Anything suspicious is listed before you can download. You then download two separate things:
+   *Create files* then builds a .docx for each essay, re-opens every file and searches it, including hidden parts, for the writer's name and everything you removed. Anything suspicious is listed before you can download. You then download two separate things:
    - The ZIP of essays (by default `anonymized-essays-DATE.zip`): send this to the reviewers.
-   - The key (by default `KEY-CONFIDENTIAL-DATE.csv`, or `.enc` if you set a passphrase): keep this yourself. It lists each essay's label and file name, the student, and what was removed.
+   - The key (by default `KEY-CONFIDENTIAL-DATE.csv`, or `.enc` if you set a passphrase): keep this yourself. It lists each essay's label and file name, the writer, and what was removed.
 5. **Look up key.** After judging, open the key in the *Look up key* tab. An encrypted key needs its passphrase, and it cannot be recovered without it.
 
 Codes and numbers are assigned at random, so their order reveals nothing about who wrote what.
@@ -44,15 +41,15 @@ Codes and numbers are assigned at random, so their order reveals nothing about w
 
 | Where | How |
 |---|---|
-| The student's name in any form: full, first, last, "Last, First", initials such as "A. Okafor", possessives, hyphenated parts, preferred name, with or without accents | Built from the roster row. A single first or last name is only matched when capitalised, so "young" is kept but "Young" (the surname) is removed. |
-| The heading block: name, instructor, course and date lines (MLA or APA) | Recognised by position and pattern. The name line becomes "Essay WP-XXXX". |
+| **Default:** the writer's name in any form: full, first, last, "Last, First", initials such as "A. Okafor", possessives, hyphenated parts, nickname, with or without accents | Built from the writer's name box (roster or typed). A single first or last name is only matched when capitalised, so "young" is kept but "Young" (the surname) is removed. |
+| The writer's line in the heading | Becomes "Essay WP-XXXX". Instructor, course and date lines are optional extras. |
 | Running page headers ("Okafor 1") | Replaced with "WP-XXXX 1". |
 | The instructor; other students and instructors on the roster | From the roster. "Professor X" is also caught by pattern. |
 | Emails, phone numbers, student IDs, course codes, school names | Patterns (the ID format and course prefixes are set in Settings). |
 | Document properties (author, last modified by, company), thumbnail, comments and their authors, tracked changes and their authors, revision IDs, template paths, custom XML, image EXIF data and alt text, `mailto:` links | Removed from the file. Tracked changes are accepted. |
 | Names in PDF metadata, Word properties and the essay heading | Also searched for throughout the essay, so the author is caught even without a roster match. |
 
-Kept, but highlighted for review: other people's names (cited authors, historical figures, friends), "Dr./Mr./Ms. + name", high school names, and links to published sources. Links to personal pages or shared documents (Google Docs, LinkedIn and similar) are removed.
+Every row except the first and the "always removed" file data is an optional extra, chosen under *What to remove*. Other people's names (cited authors, friends) are never removed unless you choose to; you can also switch on highlighting for them.
 
 **Formatting.** Word files are edited in place, so fonts, italics, paragraphs and footnotes are kept. PDFs cannot be safely redacted inside a browser, so their text is rebuilt into a clean .docx. Italics and paragraphs are kept, but the layout is simplified.
 

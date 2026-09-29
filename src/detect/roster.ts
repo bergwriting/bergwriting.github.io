@@ -19,7 +19,7 @@ export function rosterGroups(essay: ParsedEssay, ctx: DetectContext): TermGroup[
       words.push(...v.words);
       studentFolded.add(foldString(n));
     }
-    groups.push({ category: 'STUDENT', action: 'redact', label: 'Student name (roster)', source: 'roster', phrases, words });
+    groups.push({ category: 'STUDENT', action: 'redact', label: "Writer's name", source: 'roster', phrases, words });
     if (s.email) {
       groups.push({ category: 'EMAIL', action: 'redact', label: 'Student email (roster)', source: 'roster', phrases: literalPhrases([s.email]), words: [] });
     }
@@ -32,8 +32,8 @@ export function rosterGroups(essay: ParsedEssay, ctx: DetectContext): TermGroup[
     }
   }
 
-  // Names in document properties / comment authors that are not the matched student.
-  const meta = essay.metaNames.filter((n) => looksLikePersonName(n) && !studentFolded.has(foldString(n)));
+  // Without a known writer, names in the file's author field are probably the writer.
+  const meta = s ? [] : (essay.authorNames ?? []).filter((n) => looksLikePersonName(n) && !studentFolded.has(foldString(n)));
   if (meta.length) {
     const phrases: string[] = [];
     const words: string[] = [];

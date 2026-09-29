@@ -61,7 +61,7 @@ export function detectAll(essay: ParsedEssay, ctx: DetectContext): Span[] {
   const propagated = findTermSpans(essay.blocks, discoveredNameGroups(essay, [...header, ...base], ctx));
   const names = ctx.settings.flagOtherNames ? otherNameSpans(essay.blocks.filter((b) => b.kind === 'body' || b.kind === 'note')) : [];
   const order = new Map(essay.blocks.map((b, i) => [b.id, i]));
-  const chosen = applyRemoveChoices([...header, ...base, ...propagated], ctx.settings.remove);
+  const chosen = applyRemoveChoices([...header, ...base, ...propagated], ctx.settings);
   return resolveSpans([...chosen, ...names]).sort(
     (a, b) => (order.get(a.blockId) ?? 0) - (order.get(b.blockId) ?? 0) || a.start - b.start,
   );
@@ -91,13 +91,14 @@ function discoveredNameGroups(essay: ParsedEssay, spans: Span[], ctx: DetectCont
   return [{ category: 'STUDENT', action: 'redact', label: 'Name from essay heading', source: 'heading-name', phrases, words }];
 }
 
-/** Which "what to remove" option controls a span; null = always removed (custom terms, manual). */
+/** Which "what to remove" option controls a span; null = not governed by an option. */
 export function removeKeyFor(s: Pick<Span, 'category' | 'source'>): RemoveKey | null {
   switch (s.category) {
     case 'STUDENT':
       return s.source === 'roster-other' ? 'classmates' : 'studentName';
     case 'PERSON':
-      return 'studentName';
+      // names found in the file's author field or heading are the writer; others are just highlights
+      return s.source === 'metadata' || s.source === 'heading-name' || s.source === 'header-block' ? 'studentName' : null;
     case 'INSTRUCTOR':
       return 'instructor';
     case 'COURSE':
@@ -119,12 +120,17 @@ export function removeKeyFor(s: Pick<Span, 'category' | 'source'>): RemoveKey | 
   }
 }
 
-/** Kinds the committee chose not to remove are kept, but still highlighted so a reviewer can remove one by hand. */
-export function applyRemoveChoices(spans: Span[], remove: Record<RemoveKey, boolean> | undefined): Span[] {
-  if (!remove) return spans;
-  return spans.map((s) => {
+/**
+ * Keep only what the committee chose to remove. Kinds that are switched off are left
+ * completely alone (not even highlighted); "Dr./Mr. + name" and other people's names
+ * are only highlighted when that option is on.
+ */
+export function applyRemoveChoices(spans: Span[], settings: Pick<Settings, 'remove' | 'flagOtherNames'>): Span[] {
+  const remove = settings.remove;
+  return spans.filter((s) => {
     const key = removeKeyFor(s);
-    if (s.action !== 'redact' || !key || remove[key] !== false) return s;
-    return { ...s, action: 'flag', label: `${s.label} (kept: switched off in “What to remove”)` };
+    if (key) return remove?.[key] !== false;
+    if (s.category === 'PERSON' && s.action === 'flag') return settings.flagOtherNames;
+    return true;
   });
 }

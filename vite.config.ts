@@ -1,6 +1,9 @@
 import { defineConfig, type Plugin } from 'vite';
 import preact from '@preact/preset-vite';
 import { viteSingleFile } from 'vite-plugin-singlefile';
+import { readFileSync } from 'node:fs';
+
+const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string };
 
 /**
  * The privacy guarantee, enforced by the browser: the built page may not make any
@@ -35,6 +38,7 @@ function offlineCsp(): Plugin {
 export default defineConfig({
   plugins: [preact(), offlineCsp(), viteSingleFile()],
   base: './',
+  define: { __APP_VERSION__: JSON.stringify(pkg.version) },
   build: {
     target: 'es2022',
     assetsInlineLimit: 100_000_000,

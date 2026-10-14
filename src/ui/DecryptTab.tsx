@@ -44,11 +44,12 @@ export function DecryptTab() {
   return (
     <section class="step">
       <div class="step-intro">
+        <p class="eyebrow">After judging</p>
         <h2>Look up the key</h2>
-        <p>After judging, open the key to see which student wrote each essay. Works with the encrypted .enc file or a plain .csv.</p>
+        <p>Open the key to see who wrote each essay. Works with the encrypted .enc file or a plain .csv.</p>
       </div>
       <div class="card">
-        <DropZone accept=".enc,.csv,.json" multiple={false} onFiles={onFiles} label="Drop the KEY file here, or click to choose" />
+        <DropZone accept=".enc,.csv,.json" multiple={false} onFiles={onFiles} label="Drop the key file here (.enc or .csv)" />
         {file && !rows && (
           <form
             class="pass inline"

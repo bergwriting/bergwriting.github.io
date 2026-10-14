@@ -76,7 +76,7 @@ export const SETTINGS_VERSION = 2;
 export type RemoveKey = 'studentName' | 'instructor' | 'classmates' | 'course' | 'school' | 'email' | 'phone' | 'ids' | 'links' | 'dates';
 
 export const REMOVE_OPTIONS: { key: RemoveKey; label: string; hint: string }[] = [
-  { key: 'studentName', label: "Writer's name", hint: 'Every form: full, first, last, initials, nickname; always recommended' },
+  { key: 'studentName', label: "Writer's name", hint: 'Every form: full, first, last, initials, nickname. Always recommended.' },
   { key: 'instructor', label: 'Instructor / professor', hint: 'From the roster, and "Professor X" anywhere' },
   { key: 'classmates', label: 'Other students on the roster', hint: 'Classmates, roommates, co-authors named in the essay' },
   { key: 'course', label: 'Course and section', hint: 'e.g. ENG 101-03' },

@@ -127,6 +127,7 @@ export function ExportStep({ items, roster, settings, labels, onSettings, update
   return (
     <section class="step">
       <div class="step-intro">
+        <p class="eyebrow">Step 4 of 4</p>
         <h2>Create the anonymized files</h2>
         <p>
           Each essay gets a label (written into its heading and page header) and a file name. Every file is then re-opened and searched for the

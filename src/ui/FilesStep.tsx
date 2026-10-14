@@ -50,6 +50,7 @@ export function FilesStep({ items, setItems, roster, settings, updateItem, onNex
   return (
     <section class="step">
       <div class="step-intro">
+        <p class="eyebrow">Step 2 of 4</p>
         <h2>Add the essays</h2>
         <p>
           Drop in Word (.docx) and PDF files; you can add many at once. From Google Docs use <i>File › Download › Microsoft Word (.docx)</i>. For each
@@ -57,7 +58,7 @@ export function FilesStep({ items, setItems, roster, settings, updateItem, onNex
           (and roster names, if you loaded one). Add a nickname after a semicolon, e.g. <i>Hamed Yaghoobian; Hami</i>.
         </p>
       </div>
-      <DropZone accept=".docx,.pdf,.doc,.pages,.odt,.rtf" multiple onFiles={addFiles} label="Drop essay files here, or click to choose" />
+      <DropZone accept=".docx,.pdf,.doc,.pages,.odt,.rtf" multiple onFiles={addFiles} label="Drop essays here — Word (.docx) or PDF" />
 
       {items.length > 0 && (
         <div class="card">

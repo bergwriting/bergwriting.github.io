@@ -1,5 +1,9 @@
 # Essay Anonymizer
 
+Made by [Hamed Yaghoobian](https://hamedyaghoobian.com) for the Writing Program Committee at Muhlenberg College. Free and open source under the [MIT License](LICENSE).
+
+**Use it:** https://bergwriting.github.io/
+
 Anonymizes student essays (.docx and PDF) for blind review by the writing program committee, and keeps a separate key so you can look up each author after judging.
 
 - **Nothing to install.** It is one file, `essay-anonymizer.html`. Double-click it and it opens in your web browser, on macOS or Windows. It is tested in Google Chrome; Microsoft Edge uses the same engine. Safari and Firefox should work but have not been tested yet, so use Chrome or Edge for the first real batch.
@@ -99,3 +103,11 @@ Code map:
 - `src/ui/`: the interface (Preact).
 
 Libraries: pdf.js, JSZip, docx, PapaParse, compromise, xmldom and Preact. All are bundled into the HTML file.
+
+## License
+
+Essay Anonymizer is released under the [MIT License](LICENSE). You may use, copy, change and share it, including at other departments and schools, as long as the copyright notice is kept.
+
+Copyright © 2026 Hamed Yaghoobian.
+
+The page bundles open-source libraries (pdf.js under Apache 2.0; JSZip, docx, PapaParse, compromise, xmldom and Preact under MIT) and the typefaces Source Serif 4 and IBM Plex (SIL Open Font License 1.1). Their full notices are in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md); regenerate them with `node scripts/third-party-licenses.mjs`.

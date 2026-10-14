@@ -9,15 +9,19 @@ import { FilesStep } from './FilesStep';
 import { ReviewStep } from './ReviewStep';
 import { ExportStep } from './ExportStep';
 import { DecryptTab } from './DecryptTab';
+import { About, Footer, LockIcon } from './About';
 
-type Tab = 'roster' | 'files' | 'review' | 'export' | 'key';
+type Tab = 'roster' | 'files' | 'review' | 'export' | 'key' | 'about';
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'roster', label: '1 · Settings' },
-  { id: 'files', label: '2 · Essays' },
-  { id: 'review', label: '3 · Review' },
-  { id: 'export', label: '4 · Export' },
+const STEPS: { id: Tab; num: string; label: string }[] = [
+  { id: 'roster', num: '01', label: 'Settings' },
+  { id: 'files', num: '02', label: 'Essays' },
+  { id: 'review', num: '03', label: 'Review' },
+  { id: 'export', num: '04', label: 'Export' },
+];
+const EXTRA_TABS: { id: Tab; label: string }[] = [
   { id: 'key', label: 'Look up key' },
+  { id: 'about', label: 'About' },
 ];
 
 const SETTINGS_KEY = 'essay-anonymizer-settings-v1';
@@ -74,34 +78,45 @@ export function App() {
 
   return (
     <div class="app">
-      <header class="top">
-        <div class="brand">
-          <h1>Essay Anonymizer</h1>
-          <p class="privacy">
-            <span class="dot" aria-hidden="true" /> Everything happens on this computer. Files are never uploaded; this page is blocked from using the network.
-          </p>
+      <header class="masthead">
+        <div class="masthead-inner">
+          <div class="title-block">
+            <p class="eyebrow">Writing Program Committee · Muhlenberg College</p>
+            <h1>
+              Essay Anonymizer
+              <span class="title-mark" aria-hidden="true" />
+            </h1>
+            <p class="tagline">Removes writers’ names from submitted essays for blind review.</p>
+          </div>
+          <div class="privacy-note">
+            <LockIcon />
+            <div>
+              <b>Private by design.</b> Runs entirely in this browser: essays are never uploaded, the page cannot reach the internet, and no AI is used.
+            </div>
+          </div>
         </div>
-        <nav class="tabs" role="tablist">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              role="tab"
-              aria-selected={tab === t.id}
-              class={tab === t.id ? 'tab active' : 'tab'}
-              onClick={() => setTab(t.id)}
-            >
-              {t.label}
-              {t.id === 'roster' && roster.length > 0 && <span class="count">{roster.length}</span>}
-              {t.id === 'files' && items.length > 0 && <span class="count">{items.length}</span>}
-              {t.id === 'review' && ready.length > 0 && (
-                <span class="count">
-                  {reviewed}/{ready.length}
-                </span>
-              )}
+      </header>
+      <nav class="stepnav" aria-label="Steps">
+        <div class="stepnav-inner" role="tablist">
+          {STEPS.map((t) => {
+            const count =
+              t.id === 'roster' && roster.length ? `${roster.length} on roster` : t.id === 'files' && items.length ? `${items.length}` : t.id === 'review' && ready.length ? `${reviewed}/${ready.length}` : '';
+            return (
+              <button key={t.id} role="tab" aria-selected={tab === t.id} class={tab === t.id ? 'step-tab active' : 'step-tab'} onClick={() => setTab(t.id)}>
+                <span class="num">{t.num}</span>
+                <span class="lbl">{t.label}</span>
+                {count && <span class="count">{count}</span>}
+              </button>
+            );
+          })}
+          <span class="spacer" />
+          {EXTRA_TABS.map((t) => (
+            <button key={t.id} role="tab" aria-selected={tab === t.id} class={tab === t.id ? 'step-tab extra active' : 'step-tab extra'} onClick={() => setTab(t.id)}>
+              <span class="lbl">{t.label}</span>
             </button>
           ))}
-        </nav>
-      </header>
+        </div>
+      </nav>
       <main>
         {tab === 'roster' && (
           <RosterStep
@@ -159,7 +174,9 @@ export function App() {
           />
         )}
         {tab === 'key' && <DecryptTab />}
+        {tab === 'about' && <About />}
       </main>
+      <Footer onAbout={() => setTab('about')} />
     </div>
   );
 }

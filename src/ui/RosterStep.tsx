@@ -56,6 +56,7 @@ export function RosterStep({ table, mapping, roster, settings, onTable, onMappin
   return (
     <section class="step">
       <div class="step-intro">
+        <p class="eyebrow">Step 1 of 4</p>
         <h2>Settings &amp; roster</h2>
         <p>
           By default only the <b>writer's name</b> is removed. You'll confirm each writer's name in step 2 (the tool suggests it from the file). A roster
@@ -69,7 +70,7 @@ export function RosterStep({ table, mapping, roster, settings, onTable, onMappin
       <div class="grid2">
         <div class="card">
           <h3>Roster file (optional)</h3>
-          <DropZone accept=".csv,.tsv,.txt,.xlsx" multiple={false} onFiles={onFiles} label="Drop a .csv or .xlsx roster here, or click to choose" />
+          <DropZone accept=".csv,.tsv,.txt,.xlsx" multiple={false} onFiles={onFiles} label="Drop a .csv or .xlsx roster here" />
           <details class="paste">
             <summary>…or paste from a spreadsheet</summary>
             <textarea
@@ -241,7 +242,7 @@ export function WhatToRemove({ settings, onSettings }: { settings: Settings; onS
             />
             <span>
               <b>{o.label}</b>
-              {o.hint && <small class="muted"> — {o.hint}</small>}
+              {o.hint && <small class="muted opt-hint">{o.hint}</small>}
             </span>
           </label>
         ))}
@@ -249,7 +250,7 @@ export function WhatToRemove({ settings, onSettings }: { settings: Settings; onS
           <input type="checkbox" checked={settings.flagOtherNames} onChange={(e) => onSettings({ ...settings, flagOtherNames: (e.target as HTMLInputElement).checked })} />
           <span>
             <b>Highlight other people's names</b>
-            <small class="muted"> — cited authors, friends; kept unless you click them</small>
+            <small class="muted opt-hint">Cited authors, friends; kept unless you click them</small>
           </span>
         </label>
       </div>

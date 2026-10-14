@@ -34,10 +34,16 @@ export function DropZone({ accept, multiple, label, onFiles }: Props) {
         if (files.length) onFiles(multiple ? files : files.slice(0, 1));
       }}
     >
-      <span class="drop-icon" aria-hidden="true">
-        ⤓
+      <svg class="drop-icon" viewBox="0 0 48 48" width="40" height="40" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round">
+        <path d="M14 8h14l8 8v22a2 2 0 0 1-2 2H14a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2z" />
+        <path d="M28 8v8h8" />
+        <path d="M17 23h14M17 28h9" />
+        <rect x="17" y="32" width="11" height="3" fill="currentColor" stroke="none" />
+      </svg>
+      <span class="drop-label">{label}</span>
+      <span class="drop-hint">
+        or <u>choose {multiple ? 'files' : 'a file'}</u>
       </span>
-      <span>{label}</span>
       <input
         ref={input}
         type="file"
